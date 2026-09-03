@@ -91,3 +91,6 @@
 
 - [ ] 사이드바 트리의 카테고리 분류 체계 확정 (지금은 태그 기반 임시 그룹핑)
 - [ ] 목업 → 실제 Next.js 컴포넌트로 옮기기
+  - 색상·타입 스케일(폰트크기/letter-spacing/line-height)은 `globals.css`에 토큰으로 이미 등록 완료 (위 "컬러"/"CSS 토큰" 섹션)
+  - 코드블록도 전용 색상 토큰(`code-bg`/`code-border`/`code-tab`/`code-text`)까지는 등록 끝남
+  - 그러나 Button / Tag / Input / Divider / CodeBlock을 실제로 조립한 컴포넌트(.tsx)나 재사용 클래스는 아직 하나도 없음 — 이번 작업에서 UI Kit 아트보드(03~07)를 참고해서 만들 것
