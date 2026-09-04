@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Button from "@/components/ui/button";
+import Tag from "@/components/ui/tag";
 
 const Home = () => {
   return (
@@ -69,6 +70,11 @@ const Home = () => {
           <Button variant="secondary">Secondary</Button>
           <Button variant="text">Text</Button>
           <Button variant="disabled">Disabled</Button>
+        </div>
+        <div className="flex flex-wrap items-center gap-4 border-t border-border pt-8">
+          <Tag variant="default">#DEFAULT</Tag>
+          <Tag variant="outline">#OUTLINE</Tag>
+          <Tag variant="filled">#FILLED</Tag>
         </div>
       </main>
     </div>
