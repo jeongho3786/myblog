@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Button from "@/components/ui/button";
 import Tag from "@/components/ui/tag";
+import Divider from "@/components/ui/divider";
 import InputFormTest from "@/components/test/input-form-test";
 
 const Home = () => {
@@ -79,6 +80,11 @@ const Home = () => {
         </div>
         <div className="flex w-full flex-col gap-4 border-t border-border pt-8">
           <InputFormTest />
+        </div>
+        <div className="flex w-full flex-col gap-6 border-t border-border pt-8">
+          <Divider variant="rule" />
+          <Divider variant="divider" />
+          <Divider variant="dotted" />
         </div>
       </main>
     </div>
