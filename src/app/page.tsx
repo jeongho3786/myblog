@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Button from "@/components/ui/button";
 
 const Home = () => {
   return (
@@ -62,6 +63,12 @@ const Home = () => {
           >
             Documentation
           </a>
+        </div>
+        <div className="flex flex-wrap items-center gap-4 border-t border-border pt-8">
+          <Button variant="primary">Primary</Button>
+          <Button variant="secondary">Secondary</Button>
+          <Button variant="text">Text</Button>
+          <Button variant="disabled">Disabled</Button>
         </div>
       </main>
     </div>
