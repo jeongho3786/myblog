@@ -5,6 +5,18 @@ const nextConfig: NextConfig = {
   pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
 };
 
-const withMDX = createMDX({});
+const withMDX = createMDX({
+  options: {
+    rehypePlugins: [
+      [
+        "rehype-pretty-code",
+        {
+          theme: "github-dark",
+          keepBackground: false,
+        },
+      ],
+    ],
+  },
+});
 
 export default withMDX(nextConfig);

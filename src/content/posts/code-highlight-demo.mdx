@@ -1,0 +1,31 @@
+export const metadata = {
+  title: "Code Highlight Demo",
+  date: "2026-09-04",
+  excerpt: "Shiki + rehype-pretty-code 코드 하이라이팅 테스트",
+};
+
+# Code Highlight Demo
+
+언어별로 문법 하이라이팅이 적용되는지 확인하는 샘플입니다.
+
+```tsx title="button.tsx"
+import { cva } from "class-variance-authority";
+
+const buttonVariants = cva("inline-flex items-center border", {
+  variants: {
+    variant: {
+      primary: "bg-primary text-surface",
+      secondary: "border-border text-foreground",
+    },
+  },
+});
+
+export default buttonVariants;
+```
+
+```python title="hello.py"
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
+
+print(greet("world"))
+```
