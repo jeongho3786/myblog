@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Button from "@/components/ui/button";
 import Tag from "@/components/ui/tag";
+import InputFormTest from "@/components/test/input-form-test";
 
 const Home = () => {
   return (
@@ -75,6 +76,9 @@ const Home = () => {
           <Tag variant="default">#DEFAULT</Tag>
           <Tag variant="outline">#OUTLINE</Tag>
           <Tag variant="filled">#FILLED</Tag>
+        </div>
+        <div className="flex w-full flex-col gap-4 border-t border-border pt-8">
+          <InputFormTest />
         </div>
       </main>
     </div>
