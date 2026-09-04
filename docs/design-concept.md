@@ -22,6 +22,12 @@
 10. (2026-09-03) 레포에 D2Coding 폰트 파일(Regular/Bold, woff2) 반입 + `next/font/local`로 연결, `font-sans`/`font-mono` 둘 다 D2Coding으로 통일.
 11. (2026-09-03) 목업 캔버스 전체 아트보드에도 실제 D2Coding 폰트 적용 (JetBrains Mono 플레이스홀더 제거). Font Comparison 보드는 비교용 폰트(JetBrains Mono 등)는 그대로 두고 D2Coding 스와치만 최종 확정 표시로 갱신.
 12. (2026-09-03) 아트보드 7개 전수 스캔으로 실측값(색상/폰트크기/letter-spacing/line-height/보더/spacing) 뽑아서 `src/app/globals.css`에 디자인 토큰으로 확정 (아래 "CSS 토큰" 섹션). UI Kit 아트보드 색상 스와치도 실제 토큰 15개 전체로 갱신 + 잘못돼 있던 BORDER 값(`#D9D7D1`→`#C4C1B9`) 수정.
+13. (2026-09-04) `src/components/ui/button.tsx` 작업 중 CSS 변수 구조 단순화. 기존엔 `:root`에 hex 원본을 두고 `@theme inline`이 그걸 다시 alias하는 2단 참조라, 에디터에서 `bg-primary`를 호버해도 `var(--primary)`만 보이고 실제 색을 못 따라감. `:root` 레이어를 없애고 `@theme`(non-inline)에 hex를 직접 정의하도록 변경 — 다크모드 전환 계획이 없어 별도 `:root` 레이어의 이점이 없다고 판단. `--font-sans`/`--font-mono`는 `next/font/local`이 주입하는 외부 변수(`--font-d2coding`)를 그대로 참조해야 해서 예외적으로 별도 `@theme inline` 블록에 남겨둠.
+14. (2026-09-04) Button 컴포넌트 최초 구현 (`src/components/ui/button.tsx`). variant는 `primary`(채움) / `secondary`(실선 테두리) / `disabled`(변형 지정 시 `disabled` 속성 자동 부여) 세 가지로 시작.
+15. (2026-09-04) Ghost variant 재정의: 원래 목업의 "테두리만 옅게" 방식 대신 **테두리 없이 텍스트만 있는 형태**로 변경, 이름도 `ghost` → **`text`**로 개명. 텍스트 색은 기본 상태부터 `text-foreground`로 고정(기존엔 `text-muted` → hover 시 `text-foreground`로 바뀌는 방식이었으나, 상태 전환 없이 처음부터 hover와 같은 색으로 통일).
+16. (2026-09-04) Secondary variant 수정: `hover:bg-surface`(배경색 `#FFFFFF`)가 페이지 배경(`#FAFAF8`)과 거의 구분이 안 돼서 `hover:bg-border/15`(테두리색 15% 불투명도)로 교체. 모든 variant(primary/secondary/text)에 `active:` 상태 추가 — 클릭 시 hover보다 한 단계 진한 톤으로 눌림 피드백 부여.
+17. (2026-09-04) 클래스명을 문자열 변수(`Record<Variant, string>`)로 관리하면 에디터(Zed)가 Tailwind 자동완성/호버를 못 띄워서 `class-variance-authority`(cva) 도입. `variantClasses` 객체를 `cva(base, { variants, defaultVariants })` 호출로 전환하고, 별도 `type ButtonVariant` 선언 없이 `VariantProps<typeof buttonVariants>`로 타입을 자동 추론하도록 구성 (cva 설정 객체가 스타일과 타입의 단일 소스). `.zed/settings.json`에 `tailwindcss-language-server`의 `classFunctions: ["cva", "cx"]` 설정 추가해서 `cva(...)` 호출 안 클래스 문자열도 IntelliSense가 인식하게 함.
+18. (2026-09-04) 코드에서 확정된 Button 스타일을 목업 캔버스의 UI Kit(Components) 아트보드에도 반영: Secondary 테두리를 `#1C1C1A`→`#C4C1B9`(`--border`)로 정정, Ghost를 Text로 개명하고 밑줄 테두리를 완전히 제거. Primary/Disabled는 이미 실제 토큰과 일치해서 변경 없음.
 
 ## 컬러
 
@@ -58,7 +64,7 @@
 
 ## UI 규칙 (실선 기본, 점선은 트리 가이드라인 예외)
 
-- **버튼**: Primary = 채움(solid, accent 배경) / Secondary·Ghost·Disabled = 실선 테두리 (색·굵기로 상태 구분)
+- **버튼**: Primary = 채움(solid, accent 배경) / Secondary·Disabled = 실선 테두리 (색·굵기로 상태 구분) / Text = 테두리 없이 텍스트만 (구 Ghost, 2026-09-04 개명) — 전 variant에 hover·active 상태 있음
 - **태그**: Default·Outline = 실선 테두리 / Filled = 배경 채움(테두리 없음)
 - **인풋**: 기본 상태 = 실선 테두리(muted) / Focused = 실선(accent)
 - **디바이더**: Rule(2px, 페이지/섹션 최상위 구조) · Divider(1px, 목록·카드 등 콘텐츠 경계) · Dotted(보조, 표/인라인)
@@ -93,4 +99,5 @@
 - [ ] 목업 → 실제 Next.js 컴포넌트로 옮기기
   - 색상·타입 스케일(폰트크기/letter-spacing/line-height)은 `globals.css`에 토큰으로 이미 등록 완료 (위 "컬러"/"CSS 토큰" 섹션)
   - 코드블록도 전용 색상 토큰(`code-bg`/`code-border`/`code-tab`/`code-text`)까지는 등록 끝남
-  - 그러나 Button / Tag / Input / Divider / CodeBlock을 실제로 조립한 컴포넌트(.tsx)나 재사용 클래스는 아직 하나도 없음 — 이번 작업에서 UI Kit 아트보드(03~07)를 참고해서 만들 것
+  - [x] **Button** (`src/components/ui/button.tsx`, cva 기반) — variant: `primary`/`secondary`/`text`/`disabled`. 목업의 Ghost는 Text로 개명 + 테두리 제거하는 방향으로 코드 쪽에서 먼저 확정됨 → **UI Kit 아트보드도 이 내용으로 갱신 필요**
+  - [ ] Tag / Input / Divider / CodeBlock — 아직 미착수, UI Kit 아트보드(03~07) 참고해서 만들 것
