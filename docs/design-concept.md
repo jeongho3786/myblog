@@ -28,6 +28,15 @@
 16. (2026-09-04) Secondary variant 수정: `hover:bg-surface`(배경색 `#FFFFFF`)가 페이지 배경(`#FAFAF8`)과 거의 구분이 안 돼서 `hover:bg-border/15`(테두리색 15% 불투명도)로 교체. 모든 variant(primary/secondary/text)에 `active:` 상태 추가 — 클릭 시 hover보다 한 단계 진한 톤으로 눌림 피드백 부여.
 17. (2026-09-04) 클래스명을 문자열 변수(`Record<Variant, string>`)로 관리하면 에디터(Zed)가 Tailwind 자동완성/호버를 못 띄워서 `class-variance-authority`(cva) 도입. `variantClasses` 객체를 `cva(base, { variants, defaultVariants })` 호출로 전환하고, 별도 `type ButtonVariant` 선언 없이 `VariantProps<typeof buttonVariants>`로 타입을 자동 추론하도록 구성 (cva 설정 객체가 스타일과 타입의 단일 소스). `.zed/settings.json`에 `tailwindcss-language-server`의 `classFunctions: ["cva", "cx"]` 설정 추가해서 `cva(...)` 호출 안 클래스 문자열도 IntelliSense가 인식하게 함.
 18. (2026-09-04) 코드에서 확정된 Button 스타일을 목업 캔버스의 UI Kit(Components) 아트보드에도 반영: Secondary 테두리를 `#1C1C1A`→`#C4C1B9`(`--border`)로 정정, Ghost를 Text로 개명하고 밑줄 테두리를 완전히 제거. Primary/Disabled는 이미 실제 토큰과 일치해서 변경 없음.
+19. (2026-09-04) Tag 컴포넌트 구현 (`src/components/ui/tag.tsx`). UI Kit "04 TAGS" 아트보드 스펙 그대로 이식: `default`(테두리 `border-muted`, 텍스트 `muted`) / `outline`(테두리·텍스트 `primary`) / `filled`(배경 `primary`, 텍스트 `surface`). 공통 `text-2xs`/`tracking-wide`/`px-2.5 py-1.25`(=10px/5px, Tailwind v4 유동 spacing 스케일로 표기 — 값은 임의값 `px-[10px] py-[5px]`와 동일).
+20. (2026-09-04) Input 컴포넌트 구현 (`src/components/ui/input.tsx`). UI Kit "05 INPUT" 스펙: 기본 상태 테두리 `border`(`#C4C1B9`) + placeholder `muted` 텍스트, Focus 시 테두리 `primary` + 실제 입력값은 `foreground` 텍스트. `py-3 px-4`(12px/16px), `text-md`(13px). react-hook-form의 `register()`가 반환하는 `ref`를 연결해야 해서 이후 `forwardRef`로 전환.
+21. (2026-09-04) `react-hook-form` 도입 + 테스트용 연동 폼 작성. `Input`은 `forwardRef`로 실제 `<input>` DOM을 그대로 노출하는 얇은 래퍼라 `register`(uncontrolled) 방식이 적합 — `Controller`/`control`은 `ref`를 못 받거나 `value`/`onChange` prop 기반인 컴포넌트(서드파티 UI킷, 커스텀 드롭다운 등)를 위한 것이라 지금 구조엔 불필요하다고 판단.
+22. (2026-09-04) `ui` 폴더 원칙 확정: **진짜 베이스 공통 컴포넌트만** 둔다. react-hook-form 연동 테스트처럼 데모/검증 목적의 파일은 `src/components/test/`로 분리 (`input-form-test.tsx`).
+23. (2026-09-04) Divider 컴포넌트 구현 (`src/components/ui/divider.tsx`). UI Kit "06 DIVIDERS" 스펙: `rule`(2px solid `foreground`, 섹션 최상위 구조 경계) / `divider`(1px solid `border`, 기본값 — 목록·카드 경계) / `dotted`(1px dotted `border`, 표·인라인 보조 구분). `<div>`가 아니라 시맨틱이 맞고 접근성 트리에서 `role="separator"`로 인식되는 `<hr>`을 베이스로 사용.
+24. (2026-09-04) 코드 하이라이팅 스택 결정: **Shiki** 채택 (VS Code와 동일한 TextMate 문법 엔진, 결과물이 이미 하이라이트된 정적 HTML/CSS라 클라이언트 JS 번들 불필요, 나중에 파일 기반 MDX가 아니라 DB에서 마크다운을 가져와 렌더링하는 구조로 바뀌어도 `codeToHtml()`을 요청 시점에 그대로 재사용 가능). MDX 파이프라인 연결은 `rehype-pretty-code`(Shiki 래퍼, `title=`/줄 하이라이트 등 코드펜스 meta 파싱 지원)로 결정 — 대안으로 Shiki 팀 공식 `@shikijs/rehype`+`@shikijs/transformers` 조합도 검토했으나, 전환 시 `title=` 메타 기반 파일명 탭 기능을 직접 구현해야 하는 트레이드오프가 있어 **`rehype-pretty-code` 유지**로 결론.
+25. (2026-09-04) `next.config.ts`에 `rehype-pretty-code` 연결 (`theme: "github-dark"`, `keepBackground: false`로 배경은 우리 토큰이 직접 제어). 트러블슈팅: Next 16 `next dev`의 기본 번들러 Turbopack은 설정을 Rust 쪽으로 넘길 때 JSON 직렬화가 필요해서, 플러그인을 함수로 직접 import해 배열에 넣으면 `loader ... does not have serializable options` 에러 발생 → `["rehype-pretty-code", options]`처럼 **문자열(모듈 경로)**로 넘기도록 수정 (`@next/mdx` 로더가 내부에서 `require.resolve` + `import()`로 알아서 로드).
+26. (2026-09-04) `src/mdx-components.tsx`에 `figure`/`figcaption`/`pre` 오버라이드 추가. `rehype-pretty-code`가 코드펜스마다 `<figure><figcaption>파일명</figcaption><pre><code>...</code></pre></figure>` 구조를 뱉는데, 이 3개 태그에 `code-bg`/`code-border`/`code-tab`/`code-text` 토큰을 입혀서 사이트 전체 `.mdx` 코드블록에 자동 적용되게 함. (`h1`/`p`/`a`/`ul` 등 나머지 마크다운 요소는 아직 미스타일링.)
+27. (2026-09-04) 샘플 포스트 `src/content/posts/code-highlight-demo.mdx` 추가 — tsx/python 코드펜스 + `title=` 메타로 파일명 탭 동작 확인용.
 
 ## 컬러
 
@@ -100,4 +109,9 @@
   - 색상·타입 스케일(폰트크기/letter-spacing/line-height)은 `globals.css`에 토큰으로 이미 등록 완료 (위 "컬러"/"CSS 토큰" 섹션)
   - 코드블록도 전용 색상 토큰(`code-bg`/`code-border`/`code-tab`/`code-text`)까지는 등록 끝남
   - [x] **Button** (`src/components/ui/button.tsx`, cva 기반) — variant: `primary`/`secondary`/`text`/`disabled`. 목업의 Ghost는 Text로 개명 + 테두리 제거하는 방향으로 코드 쪽에서 먼저 확정됨 → **UI Kit 아트보드도 이 내용으로 갱신 필요**
-  - [ ] Tag / Input / Divider / CodeBlock — 아직 미착수, UI Kit 아트보드(03~07) 참고해서 만들 것
+  - [x] **Tag** (`src/components/ui/tag.tsx`) — variant: `default`/`outline`/`filled`
+  - [x] **Input** (`src/components/ui/input.tsx`) — `forwardRef`, react-hook-form `register` 연동 확인 완료
+  - [x] **Divider** (`src/components/ui/divider.tsx`) — variant: `rule`/`divider`/`dotted`
+  - [ ] **CodeBlock** — 순수 `ui/code-block.tsx` 컴포넌트로 만들진 않고, 대신 `next.config.ts`(rehype-pretty-code) + `mdx-components.tsx`(`figure`/`figcaption`/`pre` 오버라이드) 조합으로 MDX 코드펜스에 자동 적용되는 방식으로 1차 구현. 실제 목업 UI Kit "07 CODE BLOCK" 스와치와 픽셀 단위로 비교·검증은 아직 안 함
+- [ ] 본문 타이포그래피: `mdx-components.tsx`에 `h1`/`p`/`a`/`ul` 등 나머지 마크다운 요소 스타일링 (지금은 코드블록 3종만 오버라이드됨)
+- [ ] `react-hook-form`을 실제 사용처(댓글 폼 등)에 적용할지 검토 — 지금은 `src/components/test/input-form-test.tsx`에 데모만 있음
