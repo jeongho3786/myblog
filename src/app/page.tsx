@@ -1,94 +1,59 @@
-import Image from "next/image";
-import Button from "@/components/ui/button";
+import Link from "next/link";
+import { getAllPosts } from "@/lib/posts";
 import Tag from "@/components/ui/tag";
-import Divider from "@/components/ui/divider";
-import InputFormTest from "@/components/test/input-form-test";
 
-const Home = () => {
+const Home = async () => {
+  const posts = await getAllPosts();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-25"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/6 px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/8">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-w-0 max-w-210 flex-1 px-14 pt-14 pb-25">
+      <div className="mb-14">
+        <div className="mb-5 text-sm font-medium tracking-label text-primary">
+          {"// INDEX"}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-39.5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        <h1 className="mb-5 text-5xl font-bold tracking-tight text-foreground">
+          ALL POSTS
+        </h1>
+
+        <div className="text-sm tracking-wide text-muted">
+          {posts.length} ENTRIES · SORTED BY DATE
+        </div>
+      </div>
+
+      <div>
+        {posts.map((post, index) => (
+          <Link
+            key={post.slug}
+            href={`/${post.slug}`}
+            className="grid grid-cols-[60px_1fr_140px] items-start gap-5 border-b border-border py-5"
           >
-            <Image
-              className="dark:invert h-3.5 w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/8 px-5 transition-colors hover:border-transparent hover:bg-black/4 dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-39.5"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-        <div className="flex flex-wrap items-center gap-4 border-t border-border pt-8">
-          <Button variant="primary">Primary</Button>
-          <Button variant="secondary">Secondary</Button>
-          <Button variant="text">Text</Button>
-          <Button variant="disabled">Disabled</Button>
-        </div>
-        <div className="flex flex-wrap items-center gap-4 border-t border-border pt-8">
-          <Tag variant="default">#DEFAULT</Tag>
-          <Tag variant="outline">#OUTLINE</Tag>
-          <Tag variant="filled">#FILLED</Tag>
-        </div>
-        <div className="flex w-full flex-col gap-4 border-t border-border pt-8">
-          <InputFormTest />
-        </div>
-        <div className="flex w-full flex-col gap-6 border-t border-border pt-8">
-          <Divider variant="rule" />
-          <Divider variant="divider" />
-          <Divider variant="dotted" />
-        </div>
-      </main>
-    </div>
-  )
+            <span className="pt-0.5 text-sm text-muted">
+              {String(posts.length - index).padStart(3, "0")}
+            </span>
+
+            <span>
+              <span className="block text-xl font-bold text-foreground">
+                {post.title}
+              </span>
+
+              {post.tags.length > 0 && (
+                <span className="mt-3 flex flex-wrap gap-2">
+                  {post.tags.map((tag) => (
+                    <Tag key={tag}>#{tag.toUpperCase()}</Tag>
+                  ))}
+                </span>
+              )}
+            </span>
+
+            <span className="pt-0.5 text-right text-sm tracking-normal text-muted">
+              {post.date}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </main>
+  );
 };
 
 export default Home;
