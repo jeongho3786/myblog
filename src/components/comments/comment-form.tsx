@@ -1,11 +1,9 @@
 "use client";
 
 import { type SubmitEvent, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase/client";
+import { createComment } from "@/lib/actions/comments";
 
 const CommentForm = ({ postSlug }: { postSlug: string }) => {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [authorName, setAuthorName] = useState("");
   const [body, setBody] = useState("");
@@ -16,20 +14,15 @@ const CommentForm = ({ postSlug }: { postSlug: string }) => {
     setError(null);
 
     startTransition(async () => {
-      const { error } = await supabase.from("comments").insert({
-        post_slug: postSlug,
-        author_name: authorName,
-        body,
-      });
+      const { error } = await createComment({ postSlug, authorName, body });
 
       if (error) {
-        setError("댓글 등록에 실패했습니다.");
+        setError(error);
         return;
       }
 
       setAuthorName("");
       setBody("");
-      router.refresh();
     });
   }
 
