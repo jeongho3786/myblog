@@ -37,6 +37,16 @@
 25. (2026-09-04) `next.config.ts`에 `rehype-pretty-code` 연결 (`theme: "github-dark"`, `keepBackground: false`로 배경은 우리 토큰이 직접 제어). 트러블슈팅: Next 16 `next dev`의 기본 번들러 Turbopack은 설정을 Rust 쪽으로 넘길 때 JSON 직렬화가 필요해서, 플러그인을 함수로 직접 import해 배열에 넣으면 `loader ... does not have serializable options` 에러 발생 → `["rehype-pretty-code", options]`처럼 **문자열(모듈 경로)**로 넘기도록 수정 (`@next/mdx` 로더가 내부에서 `require.resolve` + `import()`로 알아서 로드).
 26. (2026-09-04) `src/mdx-components.tsx`에 `figure`/`figcaption`/`pre` 오버라이드 추가. `rehype-pretty-code`가 코드펜스마다 `<figure><figcaption>파일명</figcaption><pre><code>...</code></pre></figure>` 구조를 뱉는데, 이 3개 태그에 `code-bg`/`code-border`/`code-tab`/`code-text` 토큰을 입혀서 사이트 전체 `.mdx` 코드블록에 자동 적용되게 함. (`h1`/`p`/`a`/`ul` 등 나머지 마크다운 요소는 아직 미스타일링.)
 27. (2026-09-04) 샘플 포스트 `src/content/posts/code-highlight-demo.mdx` 추가 — tsx/python 코드펜스 + `title=` 메타로 파일명 탭 동작 확인용.
+28. (2026-09-12) `src/mdx-components.tsx`에 본문 마크다운 요소 오버라이드 추가: `h1`(`text-3xl`/`md:text-4xl`, `tracking-tight`) / `h2`(`text-2xl`) / `h3`(`text-xl`) / `p`(`text-base`/`md:text-lg`, `text-foreground-secondary`) / `ul`·`ol`·`li` / `strong` / `a`(`text-primary` + 밑줄) / `blockquote`(처음엔 스펙을 못 찾아 `border-border` + `text-muted`로 임시 결정했다가, 아래 29번에서 캔버스 원본을 다시 찾아 `border-primary` + `text-foreground`로 정정) / `hr`(기존 `Divider` 컴포넌트의 `divider` variant 재사용). 확인용 샘플 포스트 `src/content/posts/typography-demo.mdx` 추가 (`code-highlight-demo.mdx`와 동일한 용도).
+29. (2026-09-12) 전반적인 페이지 레이아웃(사이드바 + 본문)을 실제 코드로 구현. 목업 캔버스(`Sidebar.dc.html`/`Main.dc.html`/`PostDetail.dc.html`)를 파일 단위로 직접 읽어 실측값을 뽑음:
+    - `src/components/layout/sidebar.tsx`(서버 컴포넌트, `getAllPosts()`로 태그 첫 번째 값 기준 임시 그룹핑) + `src/components/layout/sidebar-tree.tsx`(`"use client"`, 폴더 펼침/접힘 상태 관리, `usePathname()`으로 현재 보고 있는 글의 카테고리를 기본으로 펼침). `aside`는 `w-65`(260px) 고정폭, 자식 트리는 `border-dotted`(사이트 전체에서 유일한 점선 요소, 카테고리 분류 규칙과 무관하게 이미 확정돼 있던 예외).
+    - `src/app/blog/layout.tsx` 추가 — `/blog` 세그먼트 전체에 사이드바+본문 2단 flex 레이아웃 적용.
+    - `src/app/blog/page.tsx`를 `Main.dc.html` 스펙대로 재작성: `// INDEX` 라벨 + `ALL POSTS` h1 + 엔트리 수, 목록은 `grid-cols-[60px_1fr_140px]`(번호/제목+태그/날짜), 태그는 기존 `Tag` 컴포넌트 재사용(목업 원본 padding과는 살짝 다르지만 이미 확정된 공용 컴포넌트를 우선).
+    - `src/app/blog/[slug]/page.tsx`를 `PostDetail.dc.html` 스펙대로 재작성: 메타 라인(날짜·태그·읽는 시간) + h1 + `Divider(variant="rule")` + 본문(`mdx-components.tsx` 적용) + 이전/다음 글 내비게이션. 이 과정에서 `PostDetail.dc.html` 원본을 다시 확인해 blockquote 스펙이 `border-primary`(액센트) + `text-foreground`였다는 걸 발견 → 28번에서 임시로 정한 회색 버전을 정정.
+    - `src/lib/posts.ts`: `PostMeta`에 `tags: string[]` 추가, `getAdjacentPosts(slug)`(이전/다음 글 조회) / `getReadingTimeMinutes(slug)`(파일 글자 수 기반 대략치, 별도 라이브러리 없이 500자당 1분으로 추정) 추가. 기존 샘플 포스트 3개에 `tags` 메타 추가, 본문 상단에 프런트매터 제목과 중복되던 `# 제목` 줄 제거(`typography-demo.mdx`는 테스트 목적상 유지).
+    - 모바일(390px, 스티키 헤더 + 햄버거 트리 메뉴) 레이아웃은 이번 작업에 포함하지 않음 — 데스크톱 2단 구성만 우선 구현.
+30. (2026-09-12) 라우팅 정리: 글 목록을 `/blog`가 아니라 루트 `/`에서 보여주도록 변경. `Sidebar`를 `src/app/blog/layout.tsx`(삭제됨)가 아니라 루트 `src/app/layout.tsx`로 옮겨서 모든 페이지(404 포함)에 공통 적용되게 하고, `src/app/page.tsx`(기존 create-next-app 스캐폴드 + 컴포넌트 스와치 테스트 코드)를 글 목록 페이지 내용으로 교체. `src/app/blog/page.tsx`는 중복이라 삭제하고 `/blog/[slug]` 상세 경로만 유지. 루트에 있던 Button/Tag/Divider/Input 스와치 테스트 코드는 별도로 옮기지 않고 제거함 — 필요하면 다시 요청.
+31. (2026-09-14) 글 상세 경로를 `/blog/[slug]`에서 루트 `/[slug]`로 단축. `src/app/blog/[slug]/page.tsx`를 `src/app/[slug]/page.tsx`로 이동(빈 `src/app/blog/` 디렉터리 삭제)하고, 내부 링크(`src/app/page.tsx`의 목록 링크, 이전/다음 글 링크, `sidebar-tree.tsx`의 트리 링크·활성 슬러그 판별, `revalidatePath` 경로)를 전부 `/${slug}` 형태로 갱신. 홈(`/`)과 동적 세그먼트(`/[slug]`)가 `src/app` 바로 아래 형제로 공존해도 정적 경로가 우선 매칭되어 충돌 없음 — `next build`로 라우트 테이블 확인 완료.
 
 ## 컬러
 
@@ -104,7 +114,11 @@
 
 ## 다음 할 일
 
-- [ ] 사이드바 트리의 카테고리 분류 체계 확정 (지금은 태그 기반 임시 그룹핑)
+> 2026-09-12 세션은 여기까지 진행하고 중단. **다음에 이어서 할 것: 사이드바 카테고리 분류 체계 확정**부터 시작.
+
+- [x] 전반적인 페이지 레이아웃(사이드바 + 본문) 실제 코드 구현, 글 목록을 `/blog`에서 루트 `/`로 이동 — 29·30번 로그 참고
+- [ ] **사이드바 트리의 카테고리 분류 체계 확정 (다음 작업)** — 지금은 `post.tags[0]`(글에 붙은 첫 번째 태그)를 그대로 폴더명으로 쓰는 임시 방식 (`src/components/layout/sidebar.tsx`)
+- [ ] 모바일 레이아웃(390px, 스티키 헤더 + 햄버거 트리 메뉴) 구현 — 아직 데스크톱 2단 구성만 있음
 - [ ] 목업 → 실제 Next.js 컴포넌트로 옮기기
   - 색상·타입 스케일(폰트크기/letter-spacing/line-height)은 `globals.css`에 토큰으로 이미 등록 완료 (위 "컬러"/"CSS 토큰" 섹션)
   - 코드블록도 전용 색상 토큰(`code-bg`/`code-border`/`code-tab`/`code-text`)까지는 등록 끝남
@@ -112,6 +126,6 @@
   - [x] **Tag** (`src/components/ui/tag.tsx`) — variant: `default`/`outline`/`filled`
   - [x] **Input** (`src/components/ui/input.tsx`) — `forwardRef`, react-hook-form `register` 연동 확인 완료
   - [x] **Divider** (`src/components/ui/divider.tsx`) — variant: `rule`/`divider`/`dotted`
-  - [ ] **CodeBlock** — 순수 `ui/code-block.tsx` 컴포넌트로 만들진 않고, 대신 `next.config.ts`(rehype-pretty-code) + `mdx-components.tsx`(`figure`/`figcaption`/`pre` 오버라이드) 조합으로 MDX 코드펜스에 자동 적용되는 방식으로 1차 구현. 실제 목업 UI Kit "07 CODE BLOCK" 스와치와 픽셀 단위로 비교·검증은 아직 안 함
-- [ ] 본문 타이포그래피: `mdx-components.tsx`에 `h1`/`p`/`a`/`ul` 등 나머지 마크다운 요소 스타일링 (지금은 코드블록 3종만 오버라이드됨)
+  - [x] **CodeBlock** — 순수 `ui/code-block.tsx` 컴포넌트로 만들진 않고, 대신 `next.config.ts`(rehype-pretty-code) + `mdx-components.tsx`(`figure`/`figcaption`/`pre` 오버라이드) 조합으로 MDX 코드펜스에 자동 적용되는 방식으로 구현 완료. 목업 UI Kit "07 CODE BLOCK" 스와치와의 픽셀 단위 비교는 실익이 적다고 판단해 생략하기로 결정 (2026-09-12)
+- [x] **본문 타이포그래피**: `mdx-components.tsx`에 `h1`~`h3`/`p`/`a`/`ul`/`ol`/`li`/`strong`/`blockquote`/`hr` 오버라이드 완료
 - [ ] `react-hook-form`을 실제 사용처(댓글 폼 등)에 적용할지 검토 — 지금은 `src/components/test/input-form-test.tsx`에 데모만 있음
