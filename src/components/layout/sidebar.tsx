@@ -24,16 +24,16 @@ const Sidebar = async () => {
     }));
 
   return (
-    <aside className="sticky top-0 h-screen w-65 shrink-0 self-start overflow-y-auto border-r border-border bg-background px-7 py-12">
+    <>
       <Link
         href="/"
         className="mb-10 block text-lg font-bold -tracking-tight text-foreground"
       >
-        jeongho-blog
+        jeong-ho blog
       </Link>
 
       <SidebarTree categories={categories} />
-    </aside>
+    </>
   );
 };
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import Sidebar from "@/components/layout/sidebar";
+import SidebarShell from "@/components/layout/sidebar-shell";
 import "./globals.css";
 
 const d2coding = localFont({
@@ -33,8 +34,11 @@ const RootLayout = ({ children }: LayoutProps<"/">) => {
     >
       <body className="min-h-full font-sans">
         <div className="flex min-h-screen bg-background">
-          <Sidebar />
-          <div className="flex min-w-0 flex-1">{children}</div>
+          <SidebarShell>
+            <Sidebar />
+          </SidebarShell>
+
+          <div className="flex min-w-0 flex-1 pt-14 lg:pt-0">{children}</div>
         </div>
       </body>
     </html>

@@ -25,6 +25,28 @@ export const FolderIcon = (props: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+export const HamburgerIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg width="16" height="16" viewBox="0 0 16 16" {...props}>
+    <path
+      d="M2 4.5h12M2 8h12M2 11.5h12"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+export const CloseIcon = (props: SVGProps<SVGSVGElement>) => (
+  <svg width="16" height="16" viewBox="0 0 16 16" {...props}>
+    <path
+      d="M3 3l10 10M13 3L3 13"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
 export const FileIcon = ({
   active,
   ...props
