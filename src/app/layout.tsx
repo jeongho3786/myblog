@@ -34,7 +34,7 @@ const RootLayout = ({ children }: LayoutProps<"/">) => {
       <body className="min-h-full font-sans">
         <div className="flex min-h-screen bg-background">
           <Sidebar />
-          {children}
+          <div className="flex min-w-0 flex-1">{children}</div>
         </div>
       </body>
     </html>
