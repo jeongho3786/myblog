@@ -20,7 +20,7 @@ const PostPage = async ({ params }: { params: Promise<{ slug: string }> }) => {
 
   return (
     <>
-      <main className="w-2/3 min-w-200 px-14 pt-14 pb-25">
+      <main className="w-full px-5 pt-8 pb-14 sm:min-w-160 sm:px-14 sm:pt-14 sm:pb-25 min-[1120px]:w-2/3">
         <div className="mb-10">
           <div className="mb-5 text-sm tracking-wide text-muted">
             {metadata.date}
@@ -67,7 +67,7 @@ const PostPage = async ({ params }: { params: Promise<{ slug: string }> }) => {
         </section>
       </main>
 
-      <aside className="w-1/3 shrink-0 px-8 pt-14">
+      <aside className="hidden w-1/3 min-w-55 shrink-0 px-8 pt-14 min-[1120px]:block">
         <div className="sticky top-14">
           <PostToc />
         </div>

@@ -6,7 +6,7 @@ const Home = async () => {
   const posts = await getAllPosts();
 
   return (
-    <main className="w-2/3 min-w-210 px-14 pt-14 pb-25">
+    <main className="w-full px-5 pt-8 pb-14 sm:min-w-160 sm:px-14 sm:pt-14 sm:pb-25 min-[1120px]:w-2/3">
       <div className="mb-14">
         <div className="mb-5 text-sm font-medium tracking-label text-primary">
           {"// INDEX"}
