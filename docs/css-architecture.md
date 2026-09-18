@@ -136,7 +136,55 @@ Google Fonts에 없는 폰트라 `src/app/fonts/`에 woff2 파일을 자체 호�
 
 ---
 
-## 7. 새 컴포넌트를 추가할 때 따라야 할 순서
+## 7. 반응형 사이드바 레이아웃 — `sidebar-shell.tsx`
+
+`Sidebar`(콘텐츠: 로고 + 카테고리 트리)는 항상 같은 컴포넌트지만, 이를 감싸는 `SidebarShell`이 뷰포트 크기에 따라 완전히 다른 배치 전략을 쓴다.
+
+```mermaid
+flowchart TD
+    RL["RootLayout"] --> SS["SidebarShell"]
+    SS --> H["header (fixed, lg:hidden)<br/>모바일 상단바 + 햄버거 버튼"]
+    SS --> OV["오버레이 div (fixed, lg:hidden)<br/>isOpen일 때만 렌더"]
+    SS --> AS["aside<br/>모바일: 슬라이드 드로어 / lg~: sticky 사이드바"]
+    AS --> SB["Sidebar (children)"]
+```
+
+### 7.1 물리 속성 대신 논리 속성(logical properties)
+
+Tailwind v4는 `inset-x-*` 계열을 `left`/`right`가 아니라 **논리 속성**으로 컴파일한다.
+
+| Tailwind 클래스 | 실제 CSS |
+|---|---|
+| `inset-x-0` | `inset-inline: 0px` (= `inset-inline-start`/`-end` 동시에 0) |
+| `inset-0` | `inset: 0px` (상하좌우 전부 0) |
+
+`inset-inline`은 텍스트 진행 방향(LTR/RTL) 기준 "시작~끝"이라, `left`/`right`를 직접 쓰는 것보다 방향에 안전하다. 이 프로젝트는 LTR 고정이라 체감 차이는 없지만, Tailwind v4의 기본 산출물이 그렇다는 점만 알아두면 된다.
+
+### 7.2 요소별 포지셔닝
+
+| 요소 | 클래스 (모바일 기준) | 의미 |
+|---|---|---|
+| `header` | `fixed inset-x-0 top-0 z-50 h-14` | 뷰포트 최상단에 폭 100%로 고정된 얇은 바 |
+| 오버레이 `div` | `fixed inset-0 z-30 bg-black/40` | 뷰포트 전체를 덮는 반투명 딤 배경, `isOpen`일 때만 렌더 |
+| `aside` | `fixed top-14 bottom-0 left-0 z-40 w-65` + `-translate-x-full`/`translate-x-0` | 헤더 바로 아래부터 화면 하단까지, 왼쪽에서 슬라이드 인/아웃되는 드로어 |
+
+**쌓임 순서(z-index)**: `header(50) > aside(40) > 오버레이(30) > 본문`. 항상 보여야 하는 상단바가 가장 위, 그 아래 드로어 메뉴, 그 아래 배경 딤 처리, 맨 아래 원래 페이지 콘텐츠 순.
+
+`aside`는 `translate-x` 트랜지션으로 열고 닫는다 — `isOpen`이 `false`면 `-translate-x-full`(왼쪽 화면 밖으로 이동), `true`면 `translate-x-0`(제자리)으로 `duration-200` 애니메이션.
+
+### 7.3 `lg:` 이상에서는 다른 레이아웃으로 전환
+
+같은 마크업이 `lg` 브레이크포인트부터는 클래스 오버라이드로 데스크톱 사이드바가 된다.
+
+- `header`, 오버레이: `lg:hidden` — 데스크톱에서는 아예 렌더 트리에서 안 보임 (오버레이는 `isOpen` 상태와 무관하게 CSS로 숨김)
+- `aside`: `lg:sticky lg:top-0 lg:bottom-auto lg:left-auto lg:h-screen lg:translate-x-0` — `fixed` 드로어에서 `sticky` 사이드바로 전환, 트랜지션용 `translate-x`도 무효화되어 항상 제자리
+- `RootLayout`(`src/app/layout.tsx`)의 `{children}` 래퍼에 붙은 `pt-14 lg:pt-0`도 같은 이유: 모바일에서는 `fixed` 헤더가 차지하는 높이(`h-14`)만큼 본문을 밀어줘야 하지만, 데스크톱은 헤더 자체가 없으므로 여백도 필요 없다.
+
+즉 "모바일 전용 헤더+드로어" 세트와 "데스크톱 전용 sticky 사이드바"가 하나의 `aside` 엘리먼트 위에서 Tailwind 반응형 프리픽스만으로 전환되는 구조다.
+
+---
+
+## 8. 새 컴포넌트를 추가할 때 따라야 할 순서
 
 1. 색상·크기·간격이 필요하면 먼저 `globals.css`의 기존 토큰(`--color-*`/`--text-*`/`--leading-*`/`--tracking-*`)에서 찾는다. 없는 값을 새로 하드코딩하기 전에 정말 새 토큰이 필요한지 확인한다.
 2. 여러 상태(variant)가 있는 컴포넌트면 `cva`로 작성하고 `VariantProps`로 타입을 추론시킨다 (§3).
