@@ -7,6 +7,7 @@ const CommentForm = ({ postSlug }: { postSlug: string }) => {
   const [isPending, startTransition] = useTransition();
   const [authorName, setAuthorName] = useState("");
   const [body, setBody] = useState("");
+  const [website, setWebsite] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
@@ -14,7 +15,12 @@ const CommentForm = ({ postSlug }: { postSlug: string }) => {
     setError(null);
 
     startTransition(async () => {
-      const { error } = await createComment({ postSlug, authorName, body });
+      const { error } = await createComment({
+        postSlug,
+        authorName,
+        body,
+        honeypot: website,
+      });
 
       if (error) {
         setError(error);
@@ -23,11 +29,22 @@ const CommentForm = ({ postSlug }: { postSlug: string }) => {
 
       setAuthorName("");
       setBody("");
+      setWebsite("");
     });
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <input
+        type="text"
+        name="website"
+        value={website}
+        onChange={(e) => setWebsite(e.target.value)}
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        className="absolute left-[-9999px]"
+      />
       <input
         type="text"
         placeholder="이름"
