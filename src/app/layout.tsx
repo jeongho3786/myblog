@@ -22,8 +22,8 @@ const d2coding = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Jeong-ho blog",
-  description: "Jeong-ho blog",
+  title: "jeong-ho blog",
+  description: "jeong-ho blog",
 };
 
 const RootLayout = ({ children }: LayoutProps<"/">) => {
