@@ -116,18 +116,17 @@
 
 ## 다음 할 일
 
-> 2026-09-12 세션은 여기까지 진행하고 중단. **다음에 이어서 할 것: 사이드바 카테고리 분류 체계 확정**부터 시작.
+> 2026-09-18 기준 계획 정리. 낙관적 댓글 반영(`useOptimistic`)은 검토 후 폐기 ([`architecture.md` §10](./architecture.md) 참고).
 
+- [ ] **사이드바 트리의 카테고리 분류 체계 확정** — 지금은 `post.tags[0]`(글에 붙은 첫 번째 태그)를 그대로 폴더명으로 쓰는 임시 방식 (`src/components/layout/sidebar.tsx`)
+- [ ] **댓글 목록 페이지네이션** — `comment-list.tsx`가 `.range()`/`.limit()` 없이 글당 전체 댓글을 한 번에 조회·렌더링 중. 댓글이 쌓일수록 조회량·DOM 노드 수가 무한정 늘어나는 구조 (2026-09-18 확인)
+- [ ] **`react-hook-form`을 실제 사용처(댓글 폼 등)에 적용할지 검토** — 지금은 `src/components/test/input-form-test.tsx` 데모에만 있음
+- [ ] **홈 페이지 별도 추가** — 지금 루트 `/`는 글 목록(`page.tsx`)이 바로 나오는데, 목록과 분리된 초기 화면을 새로 만들고 아스키 아트 요소를 넣는 방향 검토. 글 목록은 다른 경로로 옮겨야 할지도 같이 결정 필요
+- [ ] **한줄 일기 (댓글 폼과 같은 형식)** — 미확정, 고민 중인 지점:
+  - 작성자를 어떻게 구분할지 (본인 전용 글쓰기인지, 댓글처럼 익명 작성 가능한 형태인지)
+  - `comments` 테이블을 재사용할지, 별도 테이블(`diary`/`notes` 등)을 새로 만들지
+
+완료된 항목 (참고):
 - [x] 전반적인 페이지 레이아웃(사이드바 + 본문) 실제 코드 구현, 글 목록을 `/blog`에서 루트 `/`로 이동 — 29·30번 로그 참고
-- [ ] **사이드바 트리의 카테고리 분류 체계 확정 (다음 작업)** — 지금은 `post.tags[0]`(글에 붙은 첫 번째 태그)를 그대로 폴더명으로 쓰는 임시 방식 (`src/components/layout/sidebar.tsx`)
-- [ ] 모바일 레이아웃(390px, 스티키 헤더 + 햄버거 트리 메뉴) 구현 — 아직 데스크톱 2단 구성만 있음
-- [ ] 목업 → 실제 Next.js 컴포넌트로 옮기기
-  - 색상·타입 스케일(폰트크기/letter-spacing/line-height)은 `globals.css`에 토큰으로 이미 등록 완료 (위 "컬러"/"CSS 토큰" 섹션)
-  - 코드블록도 전용 색상 토큰(`code-bg`/`code-border`/`code-tab`/`code-text`)까지는 등록 끝남
-  - [x] **Button** (`src/components/ui/button.tsx`, cva 기반) — variant: `primary`/`secondary`/`text`/`disabled`. 목업의 Ghost는 Text로 개명 + 테두리 제거하는 방향으로 코드 쪽에서 먼저 확정됨 → **UI Kit 아트보드도 이 내용으로 갱신 필요**
-  - [x] **Tag** (`src/components/ui/tag.tsx`) — variant: `default`/`outline`/`filled`
-  - [x] **Input** (`src/components/ui/input.tsx`) — `forwardRef`, react-hook-form `register` 연동 확인 완료
-  - [x] **Divider** (`src/components/ui/divider.tsx`) — variant: `rule`/`divider`/`dotted`
-  - [x] **CodeBlock** — 순수 `ui/code-block.tsx` 컴포넌트로 만들진 않고, 대신 `next.config.ts`(rehype-pretty-code) + `mdx-components.tsx`(`figure`/`figcaption`/`pre` 오버라이드) 조합으로 MDX 코드펜스에 자동 적용되는 방식으로 구현 완료. 목업 UI Kit "07 CODE BLOCK" 스와치와의 픽셀 단위 비교는 실익이 적다고 판단해 생략하기로 결정 (2026-09-12)
-- [x] **본문 타이포그래피**: `mdx-components.tsx`에 `h1`~`h3`/`p`/`a`/`ul`/`ol`/`li`/`strong`/`blockquote`/`hr` 오버라이드 완료
-- [ ] `react-hook-form`을 실제 사용처(댓글 폼 등)에 적용할지 검토 — 지금은 `src/components/test/input-form-test.tsx`에 데모만 있음
+- [x] 모바일 레이아웃(스티키 헤더 + 햄버거 트리 메뉴) 구현 — `sidebar-shell.tsx`, [`css-architecture.md` §7](./css-architecture.md) 참고
+- [x] 목업 → 실제 Next.js 컴포넌트로 옮기기 (Button/Tag/Input/Divider/CodeBlock/본문 타이포그래피 전부 완료)
