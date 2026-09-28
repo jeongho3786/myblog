@@ -10,6 +10,9 @@ export type PostMeta = {
   date: string;
   excerpt: string;
   tags: string[];
+  // 글이 바로 속한 카테고리(폴더)의 slug. 안 적었으면 null → uncategorized
+  // 상위 경로는 적지 않는다 (DB의 parent_id를 따라 계산 — src/lib/categories.ts)
+  category: string | null;
 };
 
 export function getAllSlugs(): string[] {
@@ -25,7 +28,7 @@ export const getAllPosts = unstable_cache(
     const posts = await Promise.all(
       slugs.map(async (slug) => {
         const { metadata } = await import(`@/content/posts/${slug}.mdx`);
-        return { slug, tags: [], ...metadata } as PostMeta;
+        return { slug, tags: [], category: null, ...metadata } as PostMeta;
       }),
     );
     return posts.sort((a, b) => (a.date < b.date ? 1 : -1));
