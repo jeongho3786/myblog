@@ -71,7 +71,7 @@ flowchart TD
     getAllSlugs --> getAllPosts["getAllPosts()<br/>메타데이터 수집 + 캐시"]
 
     getAllPosts --> Home["/ 홈페이지<br/>전체 글 목록"]
-    getAllPosts --> Sidebar["Sidebar<br/>태그별 그룹핑"]
+    getAllPosts --> Sidebar["Sidebar<br/>카테고리 폴더에 글 배치 (11번)"]
     getAllPosts --> getAdjacent["getAdjacentPosts(slug)<br/>prev/next 계산"]
 
     getAdjacent --> PostPage["/[slug] 페이지<br/>이전글·다음글 링크"]
@@ -80,7 +80,7 @@ flowchart TD
 | 함수 | 반환하는 것 | 못 하는 것 |
 |---|---|---|
 | `getAllSlugs` | 파일명(slug) 배열 | 제목/태그 정보 없음 |
-| `getAllPosts` | slug + title + tags + date | 본문(Post 컴포넌트) 안 씀 |
+| `getAllPosts` | slug + title + date + excerpt + tags + category | 본문(Post 컴포넌트) 안 씀 |
 | `getAdjacentPosts` | 현재 글의 prev/next | 목록 전체 정렬은 `getAllPosts`에 위임 |
 
 ---
@@ -210,7 +210,71 @@ flowchart LR
 | Server Action + `revalidatePath`로 댓글 처리 | ✅ | 정적 렌더링 유지하면서 댓글만 최신화 |
 | `getAllSlugs`도 추가 캐싱 | ❌ | 이미 충분히 저렴한 연산 (fs.readdirSync 1회) |
 | 카테고리를 폴더 구조로 관리 | ❌ (보류) | 성능과 무관, 콘텐츠 구조 취향의 문제 |
+| 카테고리를 DB(Supabase `categories`)로 관리 + `/admin` 관리 페이지 | ✅ | 중첩 폴더 지원, 이름 변경·이동 시 MDX 수정 불필요 (11번, [`category-admin-plan.md`](./category-admin-plan.md)) |
 | 카테고리를 `const`로 하드코딩 | ❌ | 글 추가 때마다 수동 동기화 필요 → 유지보수 부담 |
 | prev/next를 링크드리스트로 관리 | ❌ | 글 순서 바뀔 때마다 수동으로 체인 재연결 필요, 지금 정렬 방식이 이미 충분히 저렴 |
 | 댓글 섹션 전체를 CSR로 전환 | ❌ | 정적 페이지의 초기 렌더링(SEO 포함) 이점을 잃음, 이미 단일 왕복으로 충분히 빠름 |
 | (대안) `useOptimistic`으로 내 댓글만 즉시 반영 | ❌ (폐기) | 검토 후 계획에서 제외 (2026-09-18) |
+
+---
+
+## 11. 카테고리 데이터 흐름
+
+사이드바 폴더와 글 상세의 카테고리 경로는 Supabase `categories` 테이블에서 온다. 결정 사항과 작업 내역은 [`category-admin-plan.md`](./category-admin-plan.md), 어드민 로그인 구조는 [`auth-architecture.md`](./auth-architecture.md) 참고.
+
+### 글과 폴더를 잇는 방법
+
+- MDX `metadata.category`에는 **글이 바로 속한 폴더의 slug 하나만** 적는다 (`category: "react"`). 안 적으면 `null`.
+- 상위 경로(`dev / frontend / react`)는 DB의 `parent_id`를 따라 올라가며 계산한다 → 폴더 이름 변경·이동 시 MDX는 그대로.
+- slug는 만든 뒤 수정 불가 (바꾸면 연결된 글이 끊기므로). 화면에 보이는 건 `name`.
+- 카테고리를 안 적었거나, DB에 없는 slug(삭제된 폴더·오타)를 적은 글은 **uncategorized** — 사이드바 최상위에 파일로, 메타 줄에는 카테고리 없이 표시.
+
+### 읽기
+
+```mermaid
+flowchart TD
+    DB[("categories 테이블")] --> getAll["getAllCategories()<br/>unstable_cache, 태그 categories"]
+    getAll --> orEmpty["getAllCategoriesOrEmpty()<br/>실패 시 빈 배열"]
+    getAll --> Admin["/admin 트리"]
+
+    orEmpty --> build["buildCategoryTree()"]
+    build --> Sidebar["Sidebar<br/>폴더 + 글 재귀 트리"]
+    getAllPosts["getAllPosts()<br/>category slug"] --> Sidebar
+
+    orEmpty --> path["getCategoryPath(slug)"]
+    path --> PostPage["/[slug] 메타 줄<br/>DEV / FRONTEND / REACT"]
+```
+
+| 함수 (`src/lib/categories.ts`) | 역할 |
+|---|---|
+| `getAllCategories` | 전체 조회 (anon 클라이언트, 읽기 공개). 태그 `categories`로 캐시, 실패하면 예외 → 캐시 안 됨 |
+| `getAllCategoriesOrEmpty` | 사이드바·글 페이지용. 조회 실패 시 로그만 남기고 빈 배열 → 모든 글이 uncategorized로 보일 뿐 페이지는 안 깨짐 |
+| `buildCategoryTree` | 평평한 배열 → 트리 (`depth` 최상위 1, 같은 부모 안은 `sort_order` → `name`). 순환에 걸린 폴더는 최상위에 닿지 않아 빠짐 |
+| `getCategoryPath` | 글의 slug → 최상위부터의 경로. 없는 slug·순환이면 빈 배열 |
+
+- 사이드바는 루트 레이아웃에 있으므로 카테고리 조회도 **빌드 타임에 정적으로** 굳는다 (블로그 페이지는 여전히 정적).
+- 같은 단계에서는 폴더 먼저, 글 나중. 글이 없는 빈 폴더도 표시한다.
+
+### 쓰기 (`/admin`)
+
+```mermaid
+sequenceDiagram
+    participant R as CategoryRow / 추가 폼 (client)
+    participant A as 서버 액션 (actions/categories.ts)
+    participant DB as Supabase (service role)
+    participant P as /admin 페이지 (서버)
+
+    R->>A: createCategory / renameCategory / moveCategory / reorderCategory / deleteCategory
+    A->>A: verifyAdmin() — 어드민 아니면 403
+    A->>DB: 최신 데이터로 검사 후 쓰기
+    A->>A: updateTag("categories") — 캐시 즉시 만료
+    A->>P: 현재 경로(/admin) 다시 렌더링
+    P->>DB: getAllCategories() 재조회
+    A-->>R: { error } + 새 트리 (단일 왕복)
+```
+
+- 모든 쓰기 액션은 맨 앞에서 `verifyAdmin()`, 쓰기는 `supabaseAdmin`(service role)으로만.
+- 깊이(최대 3단계)·순환 검사는 캐시가 아니라 **DB 최신 상태**로 한다. 자기 자신을 부모로 두는 것만 DB check 제약, 하위 폴더가 있는 폴더 삭제는 `on delete restrict`가 마지막 안전장치.
+- `updateTag`를 서버 액션에서 호출하면 현재 경로가 같은 응답 안에서 다시 렌더링된다. `revalidateTag(tag, "max")`는 다시 렌더링하지 않아서(stale-while-revalidate) 어드민에는 쓰지 않는다.
+- 이미 만들어진 다른 페이지(글 상세 등)는 미리 다시 만들지 않고, **다음 방문 때** 새 카테고리 데이터로 다시 만들어진다.
+- 실패 원인은 화면에 그대로 보여주지 않고 `console.error("[액션 이름] …")`로 서버 로그에 남긴다.
