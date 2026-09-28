@@ -4,6 +4,7 @@ import {
   getAdjacentPosts,
   getReadingTimeMinutes,
 } from "@/lib/posts";
+import { getAllCategoriesOrEmpty, getCategoryPath } from "@/lib/categories";
 import Divider from "@/components/ui/divider";
 import CommentForm from "@/components/comments/comment-form";
 import CommentList from "@/components/comments/comment-list";
@@ -16,7 +17,11 @@ const PostPage = async ({ params }: { params: Promise<{ slug: string }> }) => {
   );
   const { prev, next } = await getAdjacentPosts(slug);
   const readingTime = getReadingTimeMinutes(slug);
-  const tags: string[] = metadata.tags ?? [];
+  // 글에는 바로 속한 폴더의 slug만 있으므로, 상위 경로는 DB에서 계산한다 (uncategorized면 빈 배열)
+  const categoryPath = getCategoryPath(
+    await getAllCategoriesOrEmpty(),
+    metadata.category ?? null,
+  );
 
   return (
     <>
@@ -24,7 +29,8 @@ const PostPage = async ({ params }: { params: Promise<{ slug: string }> }) => {
         <div className="mb-10">
           <div className="mb-5 text-sm tracking-wide text-muted">
             {metadata.date}
-            {tags.length > 0 && ` · #${tags[0].toUpperCase()}`}
+            {categoryPath.length > 0 &&
+              ` · ${categoryPath.map((category) => category.name.toUpperCase()).join(" / ")}`}
             {` · ${readingTime} MIN READ`}
           </div>
 
