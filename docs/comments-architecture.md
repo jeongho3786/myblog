@@ -10,6 +10,7 @@
 flowchart TD
     subgraph Browser["브라우저"]
         CF["CommentForm (client)"]
+        LM["LoadMoreComments (client)"]
     end
     subgraph NextServer["Next.js 서버"]
         CA["createComment Server Action"]
@@ -23,7 +24,9 @@ flowchart TD
     CF -- "postSlug/authorName/body/honeypot" --> CA
     CA -- "service role key (RLS 우회)" --> T1
     CA -- "service role key (RLS 우회)" --> T2
-    CL -- "anon key (RLS 적용)" --> T1
+    CL -- "anon key (RLS 적용) · 첫 묶음" --> T1
+    CL -- "nextCursor" --> LM
+    LM -- "anon key (RLS 적용) · 다음 묶음" --> T1
 ```
 
 핵심 설계 원칙: **읽기는 anon key, 쓰기는 service role key**로 완전히 분리했습니다. 처음엔 anon key 하나로 읽기·쓰기를 다 했었는데, anon key가 `NEXT_PUBLIC_*`로 클라이언트 번들에 노출되는 값이라 RLS 정책이 조금만 허술해도(`with check (true)`) 누구나 Supabase REST API를 직접 호출해 무제한으로 댓글을 꽂아넣을 수 있는 구멍이 됐습니다. 그래서 anon key의 쓰기 권한 자체를 없애고, 신뢰된 서버 코드(Server Action)만 쓸 수 있는 service role key로 쓰기 경로를 좁혔습니다.
@@ -105,6 +108,19 @@ select cron.schedule(
 - 등록 확인은 `select * from cron.job;`, 실행 기록은 `cron.job_run_details`에서 봅니다.
 - `(ip_hash, created_at)` 인덱스는 `created_at` 단독 조건에는 거의 쓰이지 않지만, 하루치만 남는 작은 테이블을 하루 한 번 훑는 것이라 별도 인덱스는 두지 않았습니다.
 
+### `0008_comments_post_slug_index.sql` — 댓글 목록 조회 인덱스
+
+```sql
+create index comments_post_slug_created_at_id_idx
+  on public.comments (post_slug, created_at, id);
+```
+
+댓글 목록 조회(§4)는 항상 `where post_slug = ? [and (created_at, id) < 커서] order by created_at desc, id desc limit 21` 형태입니다. 그 전까지 `comments`에는 기본키 외 인덱스가 없어서 글 하나의 댓글을 찾으려면 테이블 전체를 훑고 정렬해야 했습니다.
+
+- 컬럼 순서는 동등 조건(`post_slug`) 먼저, 정렬·범위 조건(`created_at, id`) 나중 — `comment_rate_limits` 인덱스와 같은 원칙.
+- 인덱스는 오름차순이지만 B-tree는 역방향으로도 읽을 수 있어 `desc` 정렬에 그대로 쓰입니다(`Index Scan Backward`). 해당 글 구간의 최신 쪽 끝에서 21개만 읽고 멈추며, 커서 조건은 그 구간 안에서 시작 위치만 옮깁니다.
+- 행이 적을 땐 플래너가 `Seq Scan`을 고를 수 있습니다(그 편이 더 싸서). 인덱스 사용 여부는 `set enable_seqscan = off;` 후 `explain`으로 확인.
+
 ### 권한 모델 요약
 
 세 가지 레이어가 독립적으로 작동하고, 셋 다 통과해야 실제 접근이 됩니다.
@@ -124,24 +140,66 @@ select cron.schedule(
 | 키 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (anon) | `SUPABASE_SERVICE_ROLE_KEY` (service role) |
 | 노출 범위 | 클라이언트 번들에 포함됨 (`NEXT_PUBLIC_*`) | 서버 전용, 브라우저로 절대 안 나감 |
 | RLS | 그대로 적용 | 우회 |
-| 쓰는 곳 | `CommentList` (댓글 조회) | `createComment` Server Action (rate limit 조회 + insert) |
+| 쓰는 곳 | `fetchComments` (댓글 조회 — `CommentList`·`LoadMoreComments`가 호출) | `createComment` Server Action (rate limit 조회 + insert) |
 
 `supabaseAdmin`은 `"use server"` 액션 밖(클라이언트 컴포넌트)에서 import하면 안 됩니다 — 그 순간 service role key가 번들에 노출되어 지금 만든 방어 구조가 전부 무의미해집니다.
 
 ---
 
-## 4. 댓글 조회 — `CommentList`
+## 4. 댓글 조회 — 더보기 페이지네이션
+
+**최신순, 한 묶음 `COMMENTS_PAGE_SIZE`(20)개.** 첫 묶음은 서버에서, 다음 묶음부터는 "댓글 더보기" 버튼으로 브라우저에서 불러옵니다.
+
+| 파일 | 종류 | 역할 |
+|---|---|---|
+| `src/lib/comments.ts` | 공용 | `fetchComments({ postSlug, cursor, limit })` — 조회 쿼리 하나. `Comment`/`CommentCursor` 타입, `COMMENTS_PAGE_SIZE` |
+| `src/components/comments/comment-list.tsx` | 서버 컴포넌트 | 첫 묶음 렌더링, `nextCursor`가 있으면 `LoadMoreComments`에 넘김 |
+| `src/components/comments/load-more-comments.tsx` | 클라이언트 컴포넌트 | 버튼 클릭 시 다음 묶음 조회 → 첫 묶음 아래에 이어 붙임 (불러오는 중·에러·더 없음 상태) |
+| `src/components/comments/comment-item.tsx` | 공용 | 댓글 한 개 마크업 |
+
+### 4.1 `fetchComments` — 커서(keyset) 방식
 
 ```ts
-// src/components/comments/comment-list.tsx (서버 컴포넌트)
-const { data: comments } = await supabase
+// src/lib/comments.ts
+let query = supabase
   .from("comments")
   .select("id, author_name, body, created_at")
   .eq("post_slug", postSlug)
-  .order("created_at", { ascending: true });
+  .order("created_at", { ascending: false })
+  .order("id", { ascending: false })
+  .limit(limit + 1);
+
+if (cursor) {
+  // (created_at, id) < (cursor.created_at, cursor.id)
+  query = query.or(
+    `created_at.lt."${cursor.created_at}",and(created_at.eq."${cursor.created_at}",id.lt."${cursor.id}")`,
+  );
+}
 ```
 
-anon key(`supabase`)로 조회하고, RLS의 "comments are publicly readable" 정책(`using (true)`)에 따라 해당 글(`post_slug`)의 댓글을 오래된 순으로 가져와 렌더링합니다. 서버 컴포넌트라 매 요청 시 서버에서 실행되고, 댓글 등록 후 `revalidatePath`로 갱신됩니다.
+- **커서 = 지금까지 받은 마지막 댓글의 `(created_at, id)`**. 다음 묶음은 그보다 오래된 것부터. `created_at`이 같은 댓글이 있어도 `id`가 동점을 갈라 순서가 하나로 정해집니다.
+- **offset(`.range()`)을 안 쓴 이유**: "21번째부터"는 위치 기준이라, 그 사이 새 댓글이 달리면 경계가 밀려 같은 댓글이 두 번 나오거나 빠집니다. 커서는 특정 댓글 기준이라 영향이 없습니다.
+- **다음 묶음 유무**: `limit + 1`개를 조회해 하나가 더 오면 `nextCursor`를 채우고, 아니면 `null`(버튼 숨김). 별도 `count` 쿼리 없음.
+- **`created_at`은 문자열 그대로**: DB는 마이크로초까지 저장하는데 JS `Date`로 바꾸면 밀리초로 잘려 커서 비교가 어긋납니다.
+- 필터 값은 큰따옴표로 감싸 timestamp의 `:`·`+`가 PostgREST 필터 문법으로 해석되지 않게 했습니다.
+- anon key로 조회하므로 RLS "comments are publicly readable" 정책(`using (true)`)만으로 충분하고, 서버·브라우저 양쪽에서 import할 수 있습니다. 조회에 Server Action을 쓰지 않은 건 Server Function이 mutation 용도로 설계됐기 때문입니다(Next 문서 `01-app/01-getting-started/07-mutating-data.md`).
+
+### 4.2 정적 페이지와의 관계
+
+글 상세는 빌드 타임 정적 페이지라, 첫 묶음은 빌드(또는 `revalidatePath`) 시점에 HTML로 굳고 더보기만 브라우저에서 실행됩니다. 페이지 번호 방식(`?page=N`)은 `searchParams` 때문에 페이지가 요청마다 동적 렌더링으로 바뀌어서 택하지 않았습니다.
+
+### 4.3 새 댓글 등록 시 — `key`로 더보기 상태 초기화
+
+```tsx
+// comment-list.tsx
+<LoadMoreComments key={`${nextCursor.created_at}_${nextCursor.id}`} ... />
+```
+
+더보기로 21~40번을 불러둔 상태에서 새 댓글 N이 등록되면, 서버가 다시 렌더링한 첫 묶음은 `N, 1~19번`이 됩니다. 클라이언트 상태(21~40번)를 그대로 두면 **20번이 어디에도 안 보이게** 됩니다. 첫 묶음이 바뀌면 그 마지막 댓글(= 커서)도 바뀌므로, 커서를 `key`로 줘서 `LoadMoreComments`를 새로 마운트 → "첫 묶음 + 더보기 버튼" 상태로 되돌립니다. 항상 초기화되므로 중복 제거 로직은 따로 없습니다.
+
+### 4.4 시각 표시
+
+`CommentItem`은 서버(Vercel은 UTC)와 브라우저 양쪽에서 렌더링되므로 `toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })`로 로캘·시간대를 고정합니다. 안 그러면 첫 묶음과 더보기로 불러온 묶음의 시각 형식이 섞입니다.
 
 ---
 

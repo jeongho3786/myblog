@@ -148,7 +148,7 @@ sequenceDiagram
         A->>A: revalidatePath(/slug)
         A->>P: PostPage 세그먼트 재실행
         P->>P: getAdjacentPosts (캐시 재사용)
-        P->>DB: CommentList 재조회 (새 댓글 포함)
+        P->>DB: CommentList 재조회 (최신 20개, 새 댓글 포함)
         P-->>A: 갱신된 RSC 결과
         A-->>F: 결과 + 갱신 UI (단일 왕복)
         F-->>U: 화면 일부 patch (새 댓글 반영)
