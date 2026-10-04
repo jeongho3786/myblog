@@ -70,7 +70,6 @@ flowchart TD
     getAllSlugs["getAllSlugs()<br/>파일명만 읽음"] --> genParams["generateStaticParams<br/>(page.tsx)"]
     getAllSlugs --> getAllPosts["getAllPosts()<br/>메타데이터 수집 + 캐시"]
 
-    getAllPosts --> Home["/ 홈페이지<br/>전체 글 목록"]
     getAllPosts --> Sidebar["Sidebar<br/>카테고리 폴더에 글 배치 (11번)"]
     getAllPosts --> getAdjacent["getAdjacentPosts(slug)<br/>prev/next 계산"]
 
@@ -115,7 +114,7 @@ flowchart LR
 flowchart TD
     Root["RootLayout (layout.tsx)"] --> SB["Sidebar"]
     Root --> Slot["{children} 슬롯"]
-    Slot --> Home["Home (/)"]
+    Slot --> Home["Home (/)<br/>아스키 배너 + 연락처"]
     Slot --> Post["PostPage (/[slug])"]
     Post --> Body["Post 본문"]
     Post --> CL["CommentList"]
