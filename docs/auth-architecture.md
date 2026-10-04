@@ -184,7 +184,10 @@ Google 계정만 있으면 누구나 인증까지는 통과할 수 있다(동의
 
 **Supabase 대시보드**
 - Authentication → Sign In / Providers → Google: Client ID / Secret 입력.
-- Authentication → URL Configuration → Redirect URLs: `http://localhost:3000/auth/callback` (배포 시 배포 도메인 추가, Site URL도 배포 도메인으로).
+- Authentication → URL Configuration
+  - **Site URL**: `https://jeongho-blog.vercel.app` (2026-10-04 배포 때 `http://localhost:3000`에서 변경)
+  - **Redirect URLs**: `https://jeongho-blog.vercel.app/auth/callback`, `http://localhost:3000/auth/callback` — DB를 개발·운영이 같이 써서 둘 다 필요.
+  - Supabase는 `redirectTo`가 Redirect URLs 목록 **또는 Site URL과 같은 호스트**면 허용하고, 아니면 Site URL로 돌려보낸다. 배포 전엔 Site URL이 localhost라 목록이 비어 있어도 로컬 로그인이 됐다.
 - Authentication → Sign In / Providers → **Allow new users to sign up**: 어드민 계정 생성 후 끄는 것을 권장 (다른 계정은 ⑤단계에서 거절됨).
 
 ---
@@ -203,5 +206,5 @@ Google 계정만 있으면 누구나 인증까지는 통과할 수 있다(동의
 ## 9. 알려진 한계 / 향후 고려사항
 
 - **`authInterrupts`는 experimental**: `forbidden()` / `forbidden.tsx`는 Next.js 실험 기능이라 이후 버전에서 API가 바뀔 수 있다. 업그레이드 시 확인 필요.
-- **배포 체크리스트**: 배포 환경에 `ADMIN_USER_ID` 등록, Supabase Redirect URLs에 배포 도메인 `/auth/callback` 추가(로컬용 `localhost` 주소는 유지 — DB를 개발·운영이 같이 씀), Site URL 변경. 진행 상황은 [`deploy-plan.md`](./deploy-plan.md).
+- **도메인을 바꿀 때**: Site URL을 새 도메인으로 바꾸고 Redirect URLs에 새 도메인의 `/auth/callback`을 추가한다(localhost 주소는 유지). 배포 과정은 [`deploy-plan.md`](./deploy-plan.md).
 - **어드민 페이지가 블로그 레이아웃 안에 있음**: 루트 레이아웃을 공유해서 사이드바가 함께 보인다. 카테고리 편집 결과를 바로 볼 수 있어 의도적으로 유지 중이며, 분리하려면 route group으로 레이아웃을 나눠야 한다.

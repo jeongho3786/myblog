@@ -19,8 +19,11 @@
 
 ## 2. Vercel 배포
 
-- [ ] GitHub 저장소를 Vercel 프로젝트로 import.
-- [ ] 환경 변수 등록 (코드에서 `process.env`로 읽는 값 기준):
+> 2026-10-04 배포 완료 — **https://jeongho-blog.vercel.app** (Vercel 프로젝트 `jeongho-blog`, Hobby 플랜, `main` push 시 자동 배포). 저장소는 같은 날 public으로 전환.
+
+- [x] GitHub 저장소를 Vercel 프로젝트로 import. Optional Integrations의 Supabase 연동은 **추가하지 않음** (새 Supabase 프로젝트를 만들거나 쓰지 않는 환경 변수를 넣으므로, 기존 프로젝트 값을 직접 등록).
+- [x] 환경 변수 등록 (코드에서 `process.env`로 읽는 값 기준) — `.env.local` 내용을 붙여넣어 5개 한 번에:
+- [x] `SUPABASE_SERVICE_ROLE_KEY` · `IP_HASH_SALT`를 Sensitive(Secret)로 변경 (import 화면에선 한 묶음으로만 타입을 정할 수 있어 전부 일반으로 배포한 뒤 Settings에서 변경) — 방문자 노출과는 무관하고, 대시보드에서 값이 보이지 않게 하는 용도. `NEXT_PUBLIC_*`은 원래 공개값이라 그대로.
 
 | 변수 | 용도 |
 | --- | --- |
@@ -30,12 +33,17 @@
 | `IP_HASH_SALT` | 댓글 rate limit용 IP 해시 salt |
 | `ADMIN_USER_ID` | 어드민 Supabase uuid — 비어 있으면 아무도 `/admin`에 못 들어감 |
 
+- [x] **Function Region을 `iad1`(워싱턴) → `icn1`(서울)로 변경** (Settings → Functions, Hobby는 리전 1개만). 기본값 `iad1`에선 동적 페이지(`/diary`)가 요청마다 아시아의 Supabase와 태평양을 3~4번 왕복해 TTFB 0.58~0.77초(콜드 스타트 1.79초), 정적 글(`/hello-world`)은 캐시 HIT로 0.07~0.27초였다. 응답 헤더 `X-Vercel-Id: icn1::iad1::…`의 두 번째 값이 함수 리전. 리전 변경은 **다음 배포부터** 적용된다.
+  - 그래도 느리면: `fetchDiaryPage`의 개수 조회 → 범위 조회(순차 2회)를 병렬로 바꿔 왕복 1회를 줄일 수 있다.
 - [ ] (도메인 구매 시) Vercel에 도메인 연결.
 
 ## 3. Supabase Auth URL 설정
 
-- [ ] Site URL을 배포 도메인으로 변경.
-- [ ] Redirect URLs에 `https://<배포 도메인>/auth/callback` 추가.
+- [x] Site URL을 배포 도메인으로 변경 → `https://jeongho-blog.vercel.app`.
+- [x] Redirect URLs에 두 주소 등록 → `https://jeongho-blog.vercel.app/auth/callback`, `http://localhost:3000/auth/callback`.
+  - 그전엔 Redirect URLs가 비어 있었는데도 로컬 로그인이 됐다 — Supabase는 **Site URL과 같은 호스트**의 주소도 허용하기 때문(당시 Site URL이 `localhost:3000`). Site URL을 바꾸면서 localhost를 명시적으로 등록해야 했다.
+  - 도메인을 사서 붙이면 Site URL을 새 도메인으로 바꾸고 그 `/auth/callback`도 추가한다.
+- [x] 배포 사이트에서 Google 로그인 → `/admin` 접근 확인.
 
 ## 4. 운영 데이터 정리
 
@@ -49,8 +57,9 @@
 
 ## 5. 배포 후 확인
 
-- [ ] Google 로그인 → `/admin` 접근 (어드민 계정만 들어가지는지)
-- [ ] 댓글 작성 · rate limit 동작
-- [ ] 사이드바 카테고리 트리 · 글 메타 줄 카테고리 경로
-- [ ] 짧은 일기 `/diary` — 비로그인 시 작성 폼·수정/삭제 버튼 없음, 어드민 작성·수정·삭제·페이지 이동. **로그인 후 1시간 이상 지나서** `/diary`만 오가도 로그인이 유지되는지 (proxy 토큰 갱신)
-- [ ] 홈 아스키 배너 — 모바일에서 가로 스크롤·줄바꿈 없이 보이는지, 배포 환경 폰트(D2Coding)로 정렬이 맞는지
+- [x] 배포 직후 응답 확인 — `/`·`/hello-world`·`/diary`·`/admin`·`/icon.svg`·`/apple-icon.png` 200, `/diary?page=9` → `/diary` 307, 없는 경로 404.
+- [x] Google 로그인 → `/admin` 접근 (어드민 계정으로 확인)
+- [x] 댓글 작성 · rate limit 동작
+- [ ] 사이드바 카테고리 트리 · 글 메타 줄 카테고리 경로 — 테스트 카테고리를 모두 지운 상태라, 실제 카테고리를 만들고 글을 쓸 때 확인
+- [x] 짧은 일기 `/diary` — 비로그인 시 작성 폼·수정/삭제 버튼 없음, 어드민 작성·수정·삭제·페이지 이동. **로그인 후 1시간 이상 지나서** `/diary`만 오가도 로그인이 유지되는지 (proxy 토큰 갱신)
+- [x] 홈 아스키 배너 — 모바일에서 가로 스크롤·줄바꿈 없이 보이는지, 배포 환경 폰트(D2Coding)로 정렬이 맞는지
