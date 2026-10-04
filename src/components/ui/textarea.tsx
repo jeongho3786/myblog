@@ -1,5 +1,6 @@
 import { forwardRef, type TextareaHTMLAttributes } from "react";
 import { cva } from "class-variance-authority";
+import { cn } from "@/lib/cn";
 
 // Input과 같은 스펙(테두리·여백·폰트·포커스)에 여러 줄 입력용 설정만 더한 것. 세로로만 크기 조절 가능.
 const textareaVariants = cva(
@@ -13,7 +14,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     return (
       <textarea
         ref={ref}
-        className={textareaVariants({ className })}
+        className={cn(textareaVariants(), className)}
         {...props}
       />
     );

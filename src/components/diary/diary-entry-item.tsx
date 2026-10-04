@@ -6,6 +6,7 @@ import { DIARY_BODY_MAX_LENGTH, type DiaryEntry } from "@/lib/diary";
 import { deleteDiaryEntry, updateDiaryEntry } from "@/lib/actions/diary";
 import Textarea from "@/components/ui/textarea";
 import Button from "@/components/ui/button";
+import { cn } from "@/lib/cn";
 
 // view: 읽기 / edit: 본문 자리가 입력창으로 바뀜 / confirmDelete: 삭제 확인 버튼이 나옴
 type Mode = "view" | "edit" | "confirmDelete";
@@ -121,8 +122,7 @@ const DiaryEntryItem = ({ entry, canEdit }: { entry: DiaryEntry; canEdit: boolea
 }
 
 // 항목 오른쪽 위의 작은 텍스트 버튼 (수정 · 삭제 · 확인 · 취소).
-// ui/Button에 className으로 크기·색을 덮어쓰면 기본 클래스(px-4 py-2 text-sm text-foreground)와 겹치는데,
-// tailwind-merge가 없어서 어느 쪽이 이길지 CSS 순서에 달려 있다 → 겹치지 않게 원래 button에 토큰 클래스를 직접 쓴다.
+// ui/Button의 text variant에 className으로 크기·색만 덮어쓴다 — Button 안의 cn()이 겹치는 기본 클래스(px-4 py-2 text-sm text-foreground)를 지운다.
 const SmallButton = ({
   onClick,
   disabled,
@@ -134,16 +134,18 @@ const SmallButton = ({
   danger?: boolean;
   children: React.ReactNode;
 }) => (
-  <button
+  <Button
     type="button"
+    variant="text"
     onClick={onClick}
     disabled={disabled}
-    className={`px-2 py-1 text-xs tracking-wide transition-colors hover:bg-border/10 active:bg-border/20 disabled:pointer-events-none disabled:text-code-tab ${
-      danger ? "text-accent-alt" : "text-muted hover:text-foreground"
-    }`}
+    className={cn(
+      "px-2 py-1 text-xs disabled:text-code-tab",
+      danger ? "text-accent-alt" : "text-muted hover:text-foreground",
+    )}
   >
     {children}
-  </button>
+  </Button>
 );
 
 export default DiaryEntryItem;

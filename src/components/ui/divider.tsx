@@ -1,5 +1,6 @@
 import { type HTMLAttributes } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/cn";
 
 const dividerVariants = cva("w-full border-0 border-t", {
   variants: {
@@ -19,7 +20,7 @@ interface DividerProps
     VariantProps<typeof dividerVariants> {}
 
 const Divider = ({ variant, className, ...props }: DividerProps) => {
-  return <hr className={dividerVariants({ variant, className })} {...props} />;
+  return <hr className={cn(dividerVariants({ variant }), className)} {...props} />;
 };
 
 export default Divider;

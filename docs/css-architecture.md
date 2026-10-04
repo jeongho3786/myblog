@@ -66,13 +66,33 @@ src/app/globals.css
 ```mermaid
 flowchart LR
     Base["base 클래스 문자열<br/>(공통 레이아웃/타이포)"] --> CVA["cva(base, { variants, defaultVariants })"]
-    CVA --> Comp["React 컴포넌트<br/>buttonVariants({ variant, className })"]
+    CVA --> Comp["React 컴포넌트<br/>cn(buttonVariants({ variant }), className)"]
     CVA -.타입 자동 추론.-> Props["VariantProps<typeof buttonVariants><br/>별도 type 선언 없음"]
 ```
 
-- 클래스를 문자열 변수(`Record<Variant, string>`)로 관리하지 않고 `class-variance-authority`(cva)를 쓰는 이유: 에디터의 Tailwind IntelliSense가 `cva()` 호출 안 문자열은 인식하지만 일반 객체 리터럴 문자열은 인식하지 못하기 때문 (`.zed/settings.json`의 `classFunctions: ["cva", "cx"]` 설정과 짝을 이룸).
+- 클래스를 문자열 변수(`Record<Variant, string>`)로 관리하지 않고 `class-variance-authority`(cva)를 쓰는 이유: 에디터의 Tailwind IntelliSense가 `cva()` 호출 안 문자열은 인식하지만 일반 객체 리터럴 문자열은 인식하지 못하기 때문 (`.zed/settings.json`의 `classFunctions: ["cva", "cx", "cn"]` 설정과 짝을 이룸 — `cn`은 2026-10-04 `tailwind-merge` 도입 때 추가).
 - variant 타입은 별도 `type ButtonVariant`를 선언하지 않고 `VariantProps<typeof buttonVariants>`로 cva 설정 객체에서 자동 추론한다 — **cva 설정이 스타일과 타입의 단일 소스**.
-- `className` prop은 항상 `xxxVariants({ variant, className })`의 두 번째 인자로 합류시켜 호출부에서 덮어쓸 수 있게 한다.
+- `className` prop은 항상 **`cn(xxxVariants({ variant }), className)`**으로 합쳐서 호출부에서 덮어쓸 수 있게 한다 (§3.1).
+
+### 3.1 `cn()` — className 덮어쓰기 (`src/lib/cn.ts`, `tailwind-merge`)
+
+`cva`의 `className` 인자는 기본 클래스 **뒤에 이어 붙이기만** 한다. 그런데 class 속성 안의 순서는 CSS 우선순위와 무관하고, 우선순위가 같으면 **CSS 파일에서 뒤에 정의된 규칙**이 이긴다. Tailwind는 같은 종류를 숫자 순서로 출력해서 `.px-4`가 `.px-2`보다 뒤에 있으므로:
+
+```html
+<!-- cn 적용 전: <Button className="px-2 py-1"> -->
+<button class="... px-4 py-2 text-sm ... px-2 py-1">   → px-4 py-2가 이김 (덮어쓰기 실패)
+```
+
+기본값보다 작은 값으로 덮어쓰면 실패하고 큰 값이면 성공하는, **값에 따라 됐다 안 됐다 하는** 상태였다(2026-10-04 이전 `category-row.tsx`의 작은 버튼들이 실제로는 기본 크기로 그려지고 있었음). `cn()`은 같은 CSS 속성을 정하는 클래스가 겹치면 뒤에 온 것만 남긴다:
+
+```ts
+cn("px-4 py-2 text-sm", "shrink-0 px-2 py-1")  // → "text-sm shrink-0 px-2 py-1"
+cn("a", isActive && "b")                        // false/null/undefined는 무시
+```
+
+- **ui 컴포넌트 5개(Button · Input · Textarea · Tag · Divider) 전부 `cn`으로 합친다.** 새 ui 컴포넌트도 같은 방식으로.
+- **커스텀 토큰 등록**: tailwind-merge는 Tailwind 기본 이름 기준으로 "같은 속성"을 판단한다. `globals.css`의 토큰 중 스스로 알아보지 못하는 `tracking-snug` / `tracking-label`만 `extendTailwindMerge`로 등록했다 (등록 안 하면 `tracking-snug tracking-wide`가 둘 다 남음). `text-2xs` / `text-md`는 크기 이름 형태라 스스로 글자 크기로 분류하고, 색 토큰은 이름과 무관하게 색으로 처리해서 등록이 필요 없다 — 실제 실행으로 확인. **이름이 크기 형태(`xs`·`md`·`2xl`…)가 아닌 새 `tracking-*` 같은 토큰을 추가하면 `cn.ts`에도 등록한다.**
+- `cn` 없이 덮어쓰려고 ui 컴포넌트 대신 원래 태그를 새로 만들 필요가 없다 — 예: 짧은 일기의 작은 버튼은 `<Button variant="text" className="px-2 py-1 text-xs text-muted">`.
 
 현재 존재하는 베이스 컴포넌트:
 
@@ -84,7 +104,7 @@ flowchart LR
 | `Textarea` | (variant 없음) | `Input`과 같은 스펙 + `resize-y`(세로만 크기 조절)·`leading-relaxed`. `forwardRef`·`aria-invalid` 처리도 `Input`과 동일 |
 | `Divider` | `rule`(2px) / `divider`(1px, 기본) / `dotted` | `<hr>` 기반, `role="separator"` 접근성 확보 |
 
-입력 요소의 에러 테두리는 `aria-[invalid=true]:border-accent-alt`로 건다. Tailwind 기본 `aria-*` 변형에 `invalid`가 없어서 임의 값 문법을 쓴다. 호출부는 `aria-invalid={!!errors.필드}`만 넘기면 시각 표시와 스크린리더 표시가 같이 붙는다.
+입력 요소의 에러 테두리는 `aria-invalid:border-accent-alt`로 건다. Tailwind v4는 자동완성 목록에 없는 이름이어도 `aria-이름:`을 `[aria-이름="true"]` 선택자로 만들어 준다(생성된 CSS로 확인 — 처음엔 임의 값 문법 `aria-[invalid=true]:`가 필요하다고 잘못 판단했었음). 호출부는 `aria-invalid={!!errors.필드}`만 넘기면 시각 표시와 스크린리더 표시가 같이 붙는다.
 
 `ui/` 폴더 원칙: **진짜 베이스 공통 컴포넌트만** 둔다. 데모/검증 목적 코드(예: react-hook-form 연동 테스트)는 `src/components/test/`로 분리한다.
 
@@ -190,7 +210,7 @@ Tailwind v4는 `inset-x-*` 계열을 `left`/`right`가 아니라 **논리 속성
 ## 8. 새 컴포넌트를 추가할 때 따라야 할 순서
 
 1. 색상·크기·간격이 필요하면 먼저 `globals.css`의 기존 토큰(`--color-*`/`--text-*`/`--leading-*`/`--tracking-*`)에서 찾는다. 없는 값을 새로 하드코딩하기 전에 정말 새 토큰이 필요한지 확인한다.
-2. 여러 상태(variant)가 있는 컴포넌트면 `cva`로 작성하고 `VariantProps`로 타입을 추론시킨다 (§3).
+2. 여러 상태(variant)가 있는 컴포넌트면 `cva`로 작성하고 `VariantProps`로 타입을 추론시킨다 (§3). `className`은 `cn(xxxVariants({ variant }), className)`으로 합친다 (§3.1).
 3. 테두리는 기본이 실선이다. 점선을 쓰려는 경우 §4의 예외 규칙에 해당하는지 먼저 확인한다.
 4. 마크다운 본문에서만 쓰이는 요소면 `ui/`에 새 컴포넌트를 만들기 전에 `mdx-components.tsx` 오버라이드로 충분한지 먼저 검토한다.
 5. 데모/테스트 목적 코드는 `ui/`가 아니라 `src/components/test/`에 둔다.

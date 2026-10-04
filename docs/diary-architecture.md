@@ -159,7 +159,7 @@ const canEdit = await isAdmin();
 - 수정을 열 때마다 `reset({ body: entry.body })` — 취소했다가 다시 열어도 저장된 내용부터.
 - 저장 · 삭제 성공 후엔 `revalidatePath`로 새 목록이 prop으로 내려오므로 모드만 `view`로 되돌립니다.
 - 날짜는 `toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul" })` — 서버(Vercel은 UTC)와 브라우저의 렌더링 결과가 같아져 hydration 불일치가 없습니다.
-- 작은 버튼(`SmallButton`)은 `ui/Button`이 아니라 원래 `<button>` + 토큰 클래스: `ui/Button`에 `className`으로 크기 · 색을 덮어쓰면 기본 클래스와 겹치는데, `tailwind-merge`가 없어 어느 쪽이 이길지 CSS 순서에 달려 있어서.
+- 작은 버튼(`SmallButton`)은 `ui/Button`의 `text` variant + `className="px-2 py-1 text-xs …"` — Button 안의 `cn()`이 겹치는 기본 클래스(`px-4 py-2 text-sm text-foreground`)를 지운다 ([`css-architecture.md` §3.1](./css-architecture.md)). 비활성일 땐 `disabled` variant(회색 박스) 대신 `disabled:text-code-tab`으로 글자만 흐리게.
 
 ---
 
@@ -179,4 +179,3 @@ const DIARY_LINK: SidebarPost = { slug: "diary", title: "짧은 일기" };
 - **`diary` slug 예약**: `/diary`는 정적 경로라 `/[slug]`보다 먼저 매칭됩니다. slug가 `diary`인 MDX 글은 만들 수 없습니다.
 - **offset 페이지네이션의 경계 이동**: 다른 사람이 읽는 중에 어드민이 새 일기를 쓰면 다음 페이지로 넘어갈 때 항목 하나가 겹쳐 보일 수 있습니다. 작성자가 한 명이라 감수.
 - **수정 이력 없음**: 본문을 덮어쓰고 이전 내용은 남지 않습니다.
-- **`ui/Button` className 덮어쓰기**: 같은 문제가 `src/components/admin/category-row.tsx`의 `<Button className="shrink-0 px-2 py-1">`에도 있음 (미정리).

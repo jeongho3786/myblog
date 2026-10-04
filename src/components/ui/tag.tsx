@@ -1,5 +1,6 @@
 import { type HTMLAttributes } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/cn";
 
 const tagVariants = cva(
   "inline-flex items-center px-2.5 py-1.25 text-2xs font-medium tracking-wide border",
@@ -22,7 +23,7 @@ interface TagProps
     VariantProps<typeof tagVariants> {}
 
 const Tag = ({ variant, className, ...props }: TagProps) => {
-  return <span className={tagVariants({ variant, className })} {...props} />;
+  return <span className={cn(tagVariants({ variant }), className)} {...props} />;
 };
 
 export default Tag;
