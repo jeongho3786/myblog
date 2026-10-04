@@ -86,6 +86,25 @@ grant select, insert on public.comment_rate_limits to service_role;
 
 **트러블슈팅 기록**: `service_role`은 RLS(정책)는 우회하지만 **GRANT는 RLS와 별개로 여전히 필요**합니다. 이 프로젝트는 "Automatically expose new tables"를 꺼둔 설정이라 service_role에 대한 기본 권한도 자동으로 안 붙어서, 0002까지만 적용한 상태로 실제 댓글 등록을 시도하면 `permission denied for table comments` (Postgres 에러 코드 `42501`)로 전부 실패했습니다. delete 권한은 애플리케이션에 필요 없는 권한이라 의도적으로 안 줬습니다 (원칙: 필요한 최소 권한만 grant).
 
+### `0007_cleanup_comment_rate_limits.sql` — 오래된 rate limit 기록 정리
+
+```sql
+create extension if not exists pg_cron with schema pg_catalog;
+
+select cron.schedule(
+  'cleanup-comment-rate-limits',
+  '0 18 * * *',
+  $$delete from public.comment_rate_limits where created_at < now() - interval '1 day'$$
+);
+```
+
+`comment_rate_limits`는 댓글이 등록될 때마다 행이 쌓이기만 했습니다. rate limit 조회는 최근 1시간만 보므로(§5.3), Supabase **`pg_cron`** job이 매일 UTC 18:00(KST 03:00)에 1일 넘은 행을 지웁니다. 보관 기간 1일은 디버깅할 때 하루치 기록을 볼 수 있게 둔 여유분입니다.
+
+- job은 이 SQL을 실행한 `postgres` 역할로 돌기 때문에, 0003의 "service_role에 delete 안 줌" 원칙은 그대로 유지됩니다.
+- `cron.schedule`은 같은 이름이면 기존 job을 덮어쓰므로 다시 실행해도 job이 중복되지 않습니다.
+- 등록 확인은 `select * from cron.job;`, 실행 기록은 `cron.job_run_details`에서 봅니다.
+- `(ip_hash, created_at)` 인덱스는 `created_at` 단독 조건에는 거의 쓰이지 않지만, 하루치만 남는 작은 테이블을 하루 한 번 훑는 것이라 별도 인덱스는 두지 않았습니다.
+
 ### 권한 모델 요약
 
 세 가지 레이어가 독립적으로 작동하고, 셋 다 통과해야 실제 접근이 됩니다.
@@ -219,5 +238,5 @@ await supabaseAdmin.from("comment_rate_limits").insert({ ip_hash: ipHash });
 
 - **`x-forwarded-for` 신뢰 가정**: Vercel 같은 신뢰할 수 있는 엣지 네트워크를 통과한다는 전제 하에 안전함. 다른 호스팅으로 옮기면 이 헤더가 클라이언트에 의해 조작 가능한지 다시 확인 필요.
 - **IP 기반 rate limit의 한계**: 같은 공유 IP(회사·통신사 NAT 등) 뒤 여러 사용자가 하나의 버킷을 공유할 수 있음 — 개인 블로그 규모에선 감수할 만한 트레이드오프로 판단.
-- **`comment_rate_limits`는 계속 쌓이기만 함**: 별도 삭제(TTL) 로직이 없어 테이블이 무한정 커짐 — 트래픽이 커지면 오래된 행을 주기적으로 정리하는 배치/cron 검토 필요 (아직 미구현).
+- **`comment_rate_limits` 정리는 하루 1번**: `pg_cron`이 매일 1일 넘은 행을 지우므로(§2 `0007`) 테이블에는 최대 이틀 치 정도만 남음. 정리 주기 사이에 봇이 몰려도 행이 하루치만큼은 쌓일 수 있으나, rate limit 자체가 IP당 시간당 10건으로 막고 있어 감수할 만한 수준.
 - **CAPTCHA 미도입**: honeypot + rate limit로 1차 방어만 구현. 더 정교한 봇에 계속 뚫리면 Cloudflare Turnstile 등 도입을 다음 단계로 검토.
