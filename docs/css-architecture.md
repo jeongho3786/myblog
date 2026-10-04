@@ -80,8 +80,11 @@ flowchart LR
 |---|---|---|
 | `Button` | `primary` / `secondary` / `text` / `disabled` | `disabled` variant 선택 시 `disabled` 속성 자동 부여 |
 | `Tag` | `default` / `outline` / `filled` | |
-| `Input` | (variant 없음, cva는 클래스 조합용으로만 사용) | `forwardRef`로 실제 `<input>` 노출 → `react-hook-form`의 `register()`와 연동 |
+| `Input` | (variant 없음, cva는 클래스 조합용으로만 사용) | `forwardRef`로 실제 `<input>` 노출 → `react-hook-form`의 `register()`와 연동. `aria-invalid="true"`면 테두리 `accent-alt` |
+| `Textarea` | (variant 없음) | `Input`과 같은 스펙 + `resize-y`(세로만 크기 조절)·`leading-relaxed`. `forwardRef`·`aria-invalid` 처리도 `Input`과 동일 |
 | `Divider` | `rule`(2px) / `divider`(1px, 기본) / `dotted` | `<hr>` 기반, `role="separator"` 접근성 확보 |
+
+입력 요소의 에러 테두리는 `aria-[invalid=true]:border-accent-alt`로 건다. Tailwind 기본 `aria-*` 변형에 `invalid`가 없어서 임의 값 문법을 쓴다. 호출부는 `aria-invalid={!!errors.필드}`만 넘기면 시각 표시와 스크린리더 표시가 같이 붙는다.
 
 `ui/` 폴더 원칙: **진짜 베이스 공통 컴포넌트만** 둔다. 데모/검증 목적 코드(예: react-hook-form 연동 테스트)는 `src/components/test/`로 분리한다.
 
@@ -95,7 +98,7 @@ flowchart LR
 flowchart TD
     Rule["기본: border (실선)"] --> Btn["Button secondary/disabled"]
     Rule --> TagB["Tag default/outline"]
-    Rule --> Inp["Input"]
+    Rule --> Inp["Input / Textarea"]
     Rule --> Div["Divider (rule/divider)"]
     Exception["예외: border-dotted"] --> Tree["sidebar-tree.tsx<br/>카테고리 하위 목록 들여쓰기 세로선"]
 ```

@@ -10,11 +10,11 @@ const CommentList = async ({ postSlug }: { postSlug: string }) => {
   try {
     ({ comments, nextCursor } = await fetchComments({ postSlug }));
   } catch {
-    return <p className="text-sm text-red-500">댓글을 불러오지 못했습니다.</p>;
+    return <p className="text-sm text-accent-alt">댓글을 불러오지 못했습니다.</p>;
   }
 
   if (comments.length === 0) {
-    return <p className="text-sm text-gray-500">아직 댓글이 없습니다.</p>;
+    return <p className="text-sm text-muted">아직 댓글이 없습니다.</p>;
   }
 
   return (

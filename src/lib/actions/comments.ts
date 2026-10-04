@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 // service role key를 쓰는 걸로 변경
 import { supabaseAdmin } from "@/lib/supabase/server-client";
+import { AUTHOR_NAME_MAX_LENGTH, COMMENT_BODY_MAX_LENGTH } from "@/lib/comments";
 
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1시간
 const RATE_LIMIT_MAX_PER_WINDOW = 10;
@@ -40,6 +41,22 @@ export async function createComment({
   // DB 건드리는 거 없이, 가짜 성공 반환
   if (honeypot) return { error: null };
 
+  // 입력 검증. 클라이언트 검증은 개발자도구로 우회할 수 있으므로 여기가 실제 방어선.
+  // 앞뒤 공백을 잘라낸 값으로 검사·저장한다 — DB check 제약은 길이만 봐서 "   " 같은 공백만 있는 값도 통과시킨다.
+  // 잘못된 입력은 DB를 조회할 필요도 없으므로 rate limit 조회보다 먼저 한다.
+  const trimmedAuthorName = authorName.trim();
+  const trimmedBody = body.trim();
+
+  if (!trimmedAuthorName || !trimmedBody) {
+    return { error: "이름과 댓글을 입력해주세요." };
+  }
+  if (
+    trimmedAuthorName.length > AUTHOR_NAME_MAX_LENGTH ||
+    trimmedBody.length > COMMENT_BODY_MAX_LENGTH
+  ) {
+    return { error: "입력이 너무 깁니다." };
+  }
+
   const ipHash = await getClientIpHash();
   const now = Date.now();
   // 현재 시각에서 1시간을 뺀 시각
@@ -70,8 +87,8 @@ export async function createComment({
 
   const { error } = await supabaseAdmin.from("comments").insert({
     post_slug: postSlug,
-    author_name: authorName,
-    body,
+    author_name: trimmedAuthorName,
+    body: trimmedBody,
   });
 
   if (error) return { error: "댓글 등록에 실패했습니다." };

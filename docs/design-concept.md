@@ -30,8 +30,8 @@
 18. (2026-09-04) 코드에서 확정된 Button 스타일을 목업 캔버스의 UI Kit(Components) 아트보드에도 반영: Secondary 테두리를 `#1C1C1A`→`#C4C1B9`(`--border`)로 정정, Ghost를 Text로 개명하고 밑줄 테두리를 완전히 제거. Primary/Disabled는 이미 실제 토큰과 일치해서 변경 없음.
 19. (2026-09-04) Tag 컴포넌트 구현 (`src/components/ui/tag.tsx`). UI Kit "04 TAGS" 아트보드 스펙 그대로 이식: `default`(테두리 `border-muted`, 텍스트 `muted`) / `outline`(테두리·텍스트 `primary`) / `filled`(배경 `primary`, 텍스트 `surface`). 공통 `text-2xs`/`tracking-wide`/`px-2.5 py-1.25`(=10px/5px, Tailwind v4 유동 spacing 스케일로 표기 — 값은 임의값 `px-[10px] py-[5px]`와 동일).
 20. (2026-09-04) Input 컴포넌트 구현 (`src/components/ui/input.tsx`). UI Kit "05 INPUT" 스펙: 기본 상태 테두리 `border`(`#C4C1B9`) + placeholder `muted` 텍스트, Focus 시 테두리 `primary` + 실제 입력값은 `foreground` 텍스트. `py-3 px-4`(12px/16px), `text-md`(13px). react-hook-form의 `register()`가 반환하는 `ref`를 연결해야 해서 이후 `forwardRef`로 전환.
-21. (2026-09-04) `react-hook-form` 도입 + 테스트용 연동 폼 작성. `Input`은 `forwardRef`로 실제 `<input>` DOM을 그대로 노출하는 얇은 래퍼라 `register`(uncontrolled) 방식이 적합 — `Controller`/`control`은 `ref`를 못 받거나 `value`/`onChange` prop 기반인 컴포넌트(서드파티 UI킷, 커스텀 드롭다운 등)를 위한 것이라 지금 구조엔 불필요하다고 판단.
-22. (2026-09-04) `ui` 폴더 원칙 확정: **진짜 베이스 공통 컴포넌트만** 둔다. react-hook-form 연동 테스트처럼 데모/검증 목적의 파일은 `src/components/test/`로 분리 (`input-form-test.tsx`).
+21. (2026-09-04) `react-hook-form` 도입 + 테스트용 연동 폼 작성. `Input`은 `forwardRef`로 실제 `<input>` DOM을 그대로 노출하는 얇은 래퍼라 `register`(uncontrolled) 방식이 적합 — `Controller`/`control`은 `ref`를 못 받거나 `value`/`onChange` prop 기반인 컴포넌트(서드파티 UI킷, 커스텀 드롭다운 등)를 위한 것이라 지금 구조엔 불필요하다고 판단. (테스트 폼은 2026-10-04 댓글 폼 적용 후 삭제 — 37번 로그)
+22. (2026-09-04) `ui` 폴더 원칙 확정: **진짜 베이스 공통 컴포넌트만** 둔다. react-hook-form 연동 테스트처럼 데모/검증 목적의 파일은 `src/components/test/`로 분리 (`input-form-test.tsx` — 2026-10-04 삭제, 지금은 폴더도 없음. 규칙은 유지).
 23. (2026-09-04) Divider 컴포넌트 구현 (`src/components/ui/divider.tsx`). UI Kit "06 DIVIDERS" 스펙: `rule`(2px solid `foreground`, 섹션 최상위 구조 경계) / `divider`(1px solid `border`, 기본값 — 목록·카드 경계) / `dotted`(1px dotted `border`, 표·인라인 보조 구분). `<div>`가 아니라 시맨틱이 맞고 접근성 트리에서 `role="separator"`로 인식되는 `<hr>`을 베이스로 사용.
 24. (2026-09-04) 코드 하이라이팅 스택 결정: **Shiki** 채택 (VS Code와 동일한 TextMate 문법 엔진, 결과물이 이미 하이라이트된 정적 HTML/CSS라 클라이언트 JS 번들 불필요, 나중에 파일 기반 MDX가 아니라 DB에서 마크다운을 가져와 렌더링하는 구조로 바뀌어도 `codeToHtml()`을 요청 시점에 그대로 재사용 가능). MDX 파이프라인 연결은 `rehype-pretty-code`(Shiki 래퍼, `title=`/줄 하이라이트 등 코드펜스 meta 파싱 지원)로 결정 — 대안으로 Shiki 팀 공식 `@shikijs/rehype`+`@shikijs/transformers` 조합도 검토했으나, 전환 시 `title=` 메타 기반 파일명 탭 기능을 직접 구현해야 하는 트레이드오프가 있어 **`rehype-pretty-code` 유지**로 결론.
 25. (2026-09-04) `next.config.ts`에 `rehype-pretty-code` 연결 (`theme: "github-dark"`, `keepBackground: false`로 배경은 우리 토큰이 직접 제어). 트러블슈팅: Next 16 `next dev`의 기본 번들러 Turbopack은 설정을 Rust 쪽으로 넘길 때 JSON 직렬화가 필요해서, 플러그인을 함수로 직접 import해 배열에 넣으면 `loader ... does not have serializable options` 에러 발생 → `["rehype-pretty-code", options]`처럼 **문자열(모듈 경로)**로 넘기도록 수정 (`@next/mdx` 로더가 내부에서 `require.resolve` + `import()`로 알아서 로드).
@@ -52,6 +52,7 @@
 34. (2026-09-28) 사이드바 카테고리를 `post.tags[0]` 임시 그룹핑에서 **Supabase `categories` 테이블 기반 중첩 폴더(최대 3단계)**로 교체. MDX `metadata.category`에는 글이 바로 속한 폴더의 slug만 적고 상위 경로는 DB에서 계산. `sidebar-tree.tsx`는 다단 트리 재귀 렌더링(같은 단계는 폴더 먼저·글 나중, 빈 폴더도 표시, 현재 글의 상위 폴더들 펼침, 폴더에 속하지 않은 글은 최상위에 파일로). 글 상세 메타 줄은 `#첫번째태그` → 카테고리 경로(`DEV / FRONTEND / REACT`). 카테고리 추가·이름 변경·이동·순서·삭제는 Google 로그인 어드민 전용 `/admin` 페이지에서 — [`category-admin-plan.md`](./category-admin-plan.md) 참고.
 35. (2026-10-04) `comment_rate_limits` 오래된 행 정리 — Supabase **`pg_cron`** job `cleanup-comment-rate-limits`가 매일 UTC 18:00(KST 03:00)에 1일 넘은 행을 삭제 (`supabase/migrations/0007_cleanup_comment_rate_limits.sql`). rate limit 조회는 최근 1시간만 보므로 보관 기간 1일은 디버깅용 여유분. 앱 코드 변경 없음, job은 `postgres` 역할로 실행돼 `service_role`에 delete 권한 추가 불필요. 대안(Server Action에서 insert 시 같이 삭제)은 매 요청 쿼리가 늘어나 제외. [`comments-architecture.md` §2·§8](./comments-architecture.md) 참고.
 36. (2026-10-04) 댓글 목록 페이지네이션 — **더보기 버튼 + 최신순 + 커서(keyset) 방식, 한 묶음 20개**. 조회는 `src/lib/comments.ts`의 `fetchComments`(anon 클라이언트) 하나로 통일해 서버(`CommentList`, 첫 묶음)와 클라이언트(`LoadMoreComments`, 다음 묶음)가 같이 씀. 커서는 마지막 댓글의 `(created_at, id)` — offset(`.range()`)은 중간에 새 댓글이 끼면 묶음 경계가 밀려 중복·누락이 생겨서 제외, 다음 묶음 유무는 `limit + 1`개 조회로 판단(count 쿼리 없음). 페이지 번호 방식은 `?page=` 때문에 정적 페이지가 동적 렌더링으로 바뀌어 제외. 정렬을 오래된 순 → 최신순으로 바꾼 이유는 새로 단 댓글이 첫 묶음 밖으로 밀려 안 보이는 문제 때문. 댓글 한 개 마크업은 `comment-item.tsx`로 분리하고, 시각은 서버(UTC)·브라우저 표시가 섞이지 않게 `ko-KR`·`Asia/Seoul`로 고정. 인덱스 `(post_slug, created_at, id)` 추가(`0008`). [`comments-architecture.md` §2·§4](./comments-architecture.md) 참고.
+37. (2026-10-04) 댓글 폼에 **`react-hook-form`** 적용 + 댓글 영역 디자인 토큰 정리. `CommentForm`은 `useState` controlled → `register` uncontrolled, 검증은 RHF 기본 규칙(`required`·`validate`로 공백만 입력 차단·`maxLength`)과 필드별 에러 메시지, 서버 에러는 `setError("root.serverError")`, 성공 시 `reset()`. zod는 필드 2개라 의존성 대비 이점이 적어 보류. 제출 중 상태는 RHF `isSubmitting`이 아니라 **`useTransition` 유지** — Next 문서(`02-guides/server-actions.md`)상 이벤트 핸들러의 Server Action 호출은 `startTransition`으로 감싸야 하고, `isPending`은 재렌더링 결과 반영까지 유지됨. 길이 제한은 `src/lib/comments.ts`의 `AUTHOR_NAME_MAX_LENGTH`(60)·`COMMENT_BODY_MAX_LENGTH`(4000)로 공유하고, `createComment`에 **서버 검증**(trim 후 빈 값·길이 초과 거부, 잘린 값 저장) 추가 — 그전엔 공백만 있는 댓글이 DB `check`까지 통과했음. `ui/Textarea` 신규(Input과 같은 스펙 + `resize-y`·`leading-relaxed`), `Input`·`Textarea`에 `aria-[invalid=true]:border-accent-alt` 에러 테두리. 댓글 폼·목록·더보기 버튼의 `gray-*`/`red-*`/`rounded`를 토큰과 `ui/Button`(등록 primary, 더보기 secondary, 진행 중 disabled)으로 교체. 데모 `src/components/test/input-form-test.tsx` 삭제. [`comments-architecture.md` §5·§6](./comments-architecture.md), [`css-architecture.md` §3](./css-architecture.md) 참고.
 
 ## 컬러
 
@@ -122,7 +123,6 @@
 > 2026-10-04 기준 계획 정리 (번호 순서대로 진행). 낙관적 댓글 반영(`useOptimistic`)은 검토 후 폐기 ([`architecture.md` §10](./architecture.md) 참고).
 > 배포 계획은 [`deploy-plan.md`](./deploy-plan.md)로 분리.
 
-2. [ ] **`react-hook-form` 적용** — 지금은 `src/components/test/input-form-test.tsx` 데모에만 있음. 댓글 폼에 먼저 적용하고, 4번 한줄 일기 작성 폼도 같은 방식으로.
 3. [ ] **홈 페이지 별도 추가** — 지금 루트 `/`는 글 목록(`page.tsx`)이 바로 나오는데, 목록과 분리된 초기 화면을 새로 만들고 아스키 아트 요소를 넣는 방향. 글 목록을 어느 경로로 옮길지 같이 결정 필요.
 4. [ ] **한줄 일기 (댓글 폼과 같은 형식)**
    - 확정: **본인만 작성** (어드민 로그인 후), 타인은 **읽기만** 가능.
@@ -130,6 +130,7 @@
    - 미확정 — 노출 위치: 홈 화면에 넣을지 별도 페이지로 둘지 (3번과 같이 결정).
 
 완료된 항목 (참고):
+- [x] `react-hook-form` 적용 — 댓글 폼 + 서버 검증 + 댓글 영역 디자인 토큰 정리. 4번 한줄 일기 작성 폼도 같은 방식(`register` + 공유 길이 상수 + 서버 검증)으로 만든다. 37번 로그 참고
 - [x] 댓글 목록 페이지네이션 — 더보기 버튼 + 최신순 + 커서 방식, 한 묶음 20개. 36번 로그 참고
 - [x] `comment_rate_limits` 오래된 행 정리 — `pg_cron`으로 매일 1일 넘은 행 삭제. 35번 로그 참고
 - [x] 사이드바 트리의 카테고리 분류 체계 확정 — `post.tags[0]` 임시 방식을 DB 기반 중첩 카테고리(최대 3단계) + `/admin` 관리 페이지로 교체. 34번 로그, [`category-admin-plan.md`](./category-admin-plan.md), [`architecture.md` §11](./architecture.md) 참고

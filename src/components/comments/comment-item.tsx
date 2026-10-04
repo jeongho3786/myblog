@@ -4,16 +4,16 @@ import type { Comment } from "@/lib/comments";
 // 시각은 로캘·시간대를 고정해서 포맷한다 — 안 그러면 서버(Vercel은 UTC)와 브라우저의 표시가 달라진다.
 const CommentItem = ({ comment }: { comment: Comment }) => {
   return (
-    <li className="border-b border-gray-200 pb-4">
+    <li className="border-b border-border pb-4">
       <div className="flex items-baseline gap-2">
-        <span className="font-semibold">{comment.author_name}</span>
-        <span className="text-xs text-gray-400">
+        <span className="font-semibold text-foreground">{comment.author_name}</span>
+        <span className="text-xs tracking-wide text-muted">
           {new Date(comment.created_at).toLocaleString("ko-KR", {
             timeZone: "Asia/Seoul",
           })}
         </span>
       </div>
-      <p className="mt-1 whitespace-pre-wrap text-gray-700">{comment.body}</p>
+      <p className="mt-1 whitespace-pre-wrap text-foreground-secondary">{comment.body}</p>
     </li>
   );
 }

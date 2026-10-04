@@ -209,13 +209,15 @@ if (cursor) {
 flowchart TD
     Start(["createComment 호출<br/>{postSlug, authorName, body, honeypot}"]) --> HP{"honeypot<br/>값 있음?"}
     HP -- "있음 (봇으로 판단)" --> Fake["DB 접근 없이<br/>{error: null} 반환 (가짜 성공)"]
-    HP -- "없음" --> IPHash["getClientIpHash()<br/>x-forwarded-for → sha256(salt+ip)"]
+    HP -- "없음" --> Valid{"trim 후<br/>빈 값 / 길이 초과?"}
+    Valid -- Yes --> Err0["에러: 입력 검증 실패"]
+    Valid -- No --> IPHash["getClientIpHash()<br/>x-forwarded-for → sha256(salt+ip)"]
     IPHash --> Query["comment_rate_limits 조회<br/>eq(ip_hash) + gte(created_at, 1시간 전)<br/>order by created_at desc"]
     Query --> Count{"1시간 내<br/>10개 이상?"}
     Count -- Yes --> Err1["에러: 너무 많은 요청"]
     Count -- No --> Interval{"마지막 시도가<br/>30초 이내?"}
     Interval -- Yes --> Err2["에러: 너무 빠른 요청"]
-    Interval -- No --> Insert["comments insert +<br/>comment_rate_limits insert"]
+    Interval -- No --> Insert["comments insert (trim한 값) +<br/>comment_rate_limits insert"]
     Insert --> Revalidate["revalidatePath(/postSlug)"]
     Revalidate --> Success["{error: null}"]
 ```
@@ -229,6 +231,22 @@ if (honeypot) return { error: null };
 ```
 
 `CommentForm`의 화면에 안 보이는 `website` input에 값이 들어왔다면 사람이 아니라 자동 입력 봇으로 간주합니다. DB 조회/삽입을 아예 안 하고 성공한 것처럼 응답해서, 봇에게 "차단당했다"는 신호를 주지 않습니다.
+
+### 5.1.1 입력 검증
+
+```ts
+const trimmedAuthorName = authorName.trim();
+const trimmedBody = body.trim();
+
+if (!trimmedAuthorName || !trimmedBody) return { error: "이름과 댓글을 입력해주세요." };
+if (trimmedAuthorName.length > AUTHOR_NAME_MAX_LENGTH || trimmedBody.length > COMMENT_BODY_MAX_LENGTH)
+  return { error: "입력이 너무 깁니다." };
+```
+
+- 클라이언트 검증(§6)은 개발자도구나 직접 POST로 우회할 수 있으므로 **서버 검증이 실제 방어선**입니다. DB `check` 제약은 길이만 봐서 `"   "` 같은 공백만 있는 값을 통과시켰습니다.
+- 앞뒤 공백을 자른 값으로 검사하고, **잘린 값을 저장**합니다.
+- 길이 상수는 `src/lib/comments.ts`의 `AUTHOR_NAME_MAX_LENGTH`(60)·`COMMENT_BODY_MAX_LENGTH`(4000) — 폼과 공유하며 DB `check`(0001)와 같은 값입니다. JS `.length`는 이모지를 2로 세서(UTF-16) Postgres `char_length`보다 약간 엄격하므로, 서버 검증을 통과한 값은 DB 제약도 항상 통과합니다.
+- 잘못된 입력은 DB를 볼 필요가 없으므로 rate limit 조회보다 먼저 검사합니다.
 
 ### 5.2 IP 해시
 
@@ -262,14 +280,46 @@ await supabaseAdmin.from("comment_rate_limits").insert({ ip_hash: ipHash });
 
 ---
 
-## 6. `CommentForm` — honeypot 필드
+## 6. `CommentForm` — react-hook-form
+
+파일: `src/components/comments/comment-form.tsx`
+
+| 역할 | 담당 |
+|---|---|
+| 입력값 | `register("authorName" / "body" / "website")` — uncontrolled라 타이핑 시 리렌더링 없음 |
+| 필드 검증 | `required` + `validate: notBlank(...)`(공백만 입력 차단) + `maxLength`(공유 상수). 실패 시 필드 아래 메시지, 입력 요소에 `aria-invalid` → 테두리 `accent-alt` |
+| 서버 에러 (검증·rate limit) | `setError("root.serverError", { message })` — 다음 제출 시 RHF가 자동으로 지움 |
+| 제출 중 | `useTransition`의 `isPending` (아래 참고) |
+| 성공 후 | `reset()` → `defaultValues`로 초기화 |
+| UI | `ui/Input`·`ui/Textarea`·`ui/Button`(진행 중엔 `disabled` variant) |
+
+```tsx
+const onSubmit = (values: CommentFormValues) => {
+  startTransition(async () => {
+    const { error } = await createComment({
+      postSlug,
+      authorName: values.authorName,
+      body: values.body,
+      honeypot: values.website,
+    });
+    if (error) { setError("root.serverError", { message: error }); return; }
+    reset();
+  });
+};
+
+<form onSubmit={handleSubmit(onSubmit)}>  {/* 검증 통과 시에만 onSubmit 호출 */}
+```
+
+**RHF `isSubmitting` 대신 `useTransition`을 쓰는 이유**: Next 문서(`02-guides/server-actions.md`)상 이벤트 핸들러에서 Server Action은 `startTransition`으로 감싸 호출합니다. `startTransition`은 바로 반환되므로 `isSubmitting`은 곧바로 false가 되지만, `isPending`은 `revalidatePath`로 다시 그린 화면이 반영될 때까지 true로 유지됩니다.
+
+HTML `maxLength` 속성도 함께 둬서 입력창에 그 이상 타이핑되지 않게 하고, RHF `maxLength` 규칙은 속성을 우회했을 때의 메시지용입니다.
+
+### 6.1 honeypot 필드
 
 ```tsx
 <input
   type="text"
-  name="website"
-  value={website}
-  onChange={(e) => setWebsite(e.target.value)}
+  {...register("website")}
   tabIndex={-1}
   autoComplete="off"
   aria-hidden="true"
@@ -277,7 +327,7 @@ await supabaseAdmin.from("comment_rate_limits").insert({ ip_hash: ipHash });
 />
 ```
 
-사람 눈엔 안 보이지만(화면 밖으로 배치) 폼을 자동으로 훑으며 채우는 봇에게는 노출되는 필드입니다. `display:none`/`type="hidden"`은 일부 봇이 걸러내고 건너뛰기 때문에, `absolute` 포지셔닝으로 화면 밖에 실제 렌더링된 `text` 타입 input을 써서 우회 난이도를 높였습니다. 제출 시 `website` 값이 `createComment`의 `honeypot` 파라미터로 전달됩니다.
+화면 밖에 배치해야 해서 `ui/Input`이 아닌 원래 `<input>`에 `register`만 연결합니다. 검증 규칙은 없습니다. 사람 눈엔 안 보이지만(화면 밖으로 배치) 폼을 자동으로 훑으며 채우는 봇에게는 노출되는 필드입니다. `display:none`/`type="hidden"`은 일부 봇이 걸러내고 건너뛰기 때문에, `absolute` 포지셔닝으로 화면 밖에 실제 렌더링된 `text` 타입 input을 써서 우회 난이도를 높였습니다. 제출 시 `website` 값이 `createComment`의 `honeypot` 파라미터로 전달됩니다.
 
 ---
 
