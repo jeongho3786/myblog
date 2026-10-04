@@ -41,7 +41,8 @@
 배포 전후 어느 시점이든 테스트 데이터를 **전부** 정리한다.
 
 - [ ] 테스트 카테고리 삭제 (`테스트`, `asd`, `자식dev`, `중복테스트`, `깊이테스트` 등 — 하위 폴더부터). 실제로 쓸 카테고리 구조로 다시 구성.
-- [ ] 테스트 MDX 글 정리 (`src/content/posts/`).
+- [x] 테스트 MDX 글 정리 (`src/content/posts/`) — 2026-10-04 데모 글 3개 삭제, 테스트용 `hello-world.mdx`(제목 `Hello_world`) 하나만 남김.
+  - ⚠️ **글이 0개면 빌드 실패**: `import(\`@/content/posts/${slug}.mdx\`)`는 빌드 때 맞는 파일이 하나도 없으면 `Module not found`. 실제 글을 **먼저** 쓰고 나서 `hello-world.mdx`를 지운다.
 - [ ] 테스트 댓글 · `comment_rate_limits` 행 정리.
 - [ ] 테스트 짧은 일기(`diary_entries`, `테스트 일기 1~7` 등) 정리.
 
