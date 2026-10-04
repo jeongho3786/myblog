@@ -7,6 +7,9 @@ import { ChevronIcon, FolderIcon, FileIcon } from "@/components/ui/icons";
 
 export type SidebarPost = { slug: string; title: string };
 
+// 트리 맨 아래에 고정되는 짧은 일기 페이지(/diary). 글과 같은 파일 모양·활성 표시를 쓰려고 SidebarPost 형태로 둔다.
+const DIARY_LINK: SidebarPost = { slug: "diary", title: "짧은 일기" };
+
 export type SidebarFolder = {
   id: string;
   name: string;
@@ -55,6 +58,8 @@ const SidebarTree = ({
       />
 
       <PostList posts={uncategorized} activeSlug={activeSlug} />
+
+      <PostList posts={[DIARY_LINK]} activeSlug={activeSlug} />
     </nav>
   );
 };

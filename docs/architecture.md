@@ -115,6 +115,7 @@ flowchart TD
     Root["RootLayout (layout.tsx)"] --> SB["Sidebar"]
     Root --> Slot["{children} 슬롯"]
     Slot --> Home["Home (/)<br/>아스키 배너 + 연락처"]
+    Slot --> Diary["DiaryPage (/diary)<br/>요청마다 렌더링"]
     Slot --> Post["PostPage (/[slug])"]
     Post --> Body["Post 본문"]
     Post --> CL["CommentList"]
@@ -123,6 +124,7 @@ flowchart TD
 
 - `Sidebar`는 `RootLayout`이 직접 렌더링하는 형제 컴포넌트, `{children}`(페이지)엔 props를 못 꽂음
 - 동적 API(`cookies()`, `headers()` 등)를 아무도 안 쓰기 때문에 이 트리 전체가 **빌드 타임에 정적으로 굳음**
+- 예외: `/diary`는 `?page=`(searchParams)와 세션(`isAdmin()`)을 읽어서 요청마다 렌더링된다 ([`diary-architecture.md`](./diary-architecture.md)). `/admin`도 동적. 정적 경로라 `/[slug]`보다 먼저 매칭되므로 slug가 `diary`인 글은 만들 수 없다.
 
 ---
 

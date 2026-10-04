@@ -54,6 +54,7 @@
 36. (2026-10-04) 댓글 목록 페이지네이션 — **더보기 버튼 + 최신순 + 커서(keyset) 방식, 한 묶음 20개**. 조회는 `src/lib/comments.ts`의 `fetchComments`(anon 클라이언트) 하나로 통일해 서버(`CommentList`, 첫 묶음)와 클라이언트(`LoadMoreComments`, 다음 묶음)가 같이 씀. 커서는 마지막 댓글의 `(created_at, id)` — offset(`.range()`)은 중간에 새 댓글이 끼면 묶음 경계가 밀려 중복·누락이 생겨서 제외, 다음 묶음 유무는 `limit + 1`개 조회로 판단(count 쿼리 없음). 페이지 번호 방식은 `?page=` 때문에 정적 페이지가 동적 렌더링으로 바뀌어 제외. 정렬을 오래된 순 → 최신순으로 바꾼 이유는 새로 단 댓글이 첫 묶음 밖으로 밀려 안 보이는 문제 때문. 댓글 한 개 마크업은 `comment-item.tsx`로 분리하고, 시각은 서버(UTC)·브라우저 표시가 섞이지 않게 `ko-KR`·`Asia/Seoul`로 고정. 인덱스 `(post_slug, created_at, id)` 추가(`0008`). [`comments-architecture.md` §2·§4](./comments-architecture.md) 참고.
 37. (2026-10-04) 댓글 폼에 **`react-hook-form`** 적용 + 댓글 영역 디자인 토큰 정리. `CommentForm`은 `useState` controlled → `register` uncontrolled, 검증은 RHF 기본 규칙(`required`·`validate`로 공백만 입력 차단·`maxLength`)과 필드별 에러 메시지, 서버 에러는 `setError("root.serverError")`, 성공 시 `reset()`. zod는 필드 2개라 의존성 대비 이점이 적어 보류. 제출 중 상태는 RHF `isSubmitting`이 아니라 **`useTransition` 유지** — Next 문서(`02-guides/server-actions.md`)상 이벤트 핸들러의 Server Action 호출은 `startTransition`으로 감싸야 하고, `isPending`은 재렌더링 결과 반영까지 유지됨. 길이 제한은 `src/lib/comments.ts`의 `AUTHOR_NAME_MAX_LENGTH`(60)·`COMMENT_BODY_MAX_LENGTH`(4000)로 공유하고, `createComment`에 **서버 검증**(trim 후 빈 값·길이 초과 거부, 잘린 값 저장) 추가 — 그전엔 공백만 있는 댓글이 DB `check`까지 통과했음. `ui/Textarea` 신규(Input과 같은 스펙 + `resize-y`·`leading-relaxed`), `Input`·`Textarea`에 `aria-[invalid=true]:border-accent-alt` 에러 테두리. 댓글 폼·목록·더보기 버튼의 `gray-*`/`red-*`/`rounded`를 토큰과 `ui/Button`(등록 primary, 더보기 secondary, 진행 중 disabled)으로 교체. 데모 `src/components/test/input-form-test.tsx` 삭제. [`comments-architecture.md` §5·§6](./comments-architecture.md), [`css-architecture.md` §3](./css-architecture.md) 참고.
 38. (2026-10-04) **홈(`/`)을 글 목록에서 아스키 배너 화면으로 교체**, 글 목록 페이지는 삭제(글 탐색은 사이드바 트리로 충분). `JEONG-HO` / `BLOG` 두 줄 배너(figlet "Slant", `BLOG`는 공백으로 가운데 맞춤)를 **도면 표제란 스타일** 실선 박스에 넣고, 박스 아래 칸에 EMAIL(`mailto:`)·GITHUB(새 탭) 표(`dl` + subgrid). 이름 줄은 배너와 겹쳐서 연락처만 둠. 배너 문자열은 `src/components/home/ascii-banner.ts`(`String.raw` — 역슬래시 보존, `ASCII_BANNER_COLUMNS = 50`). 순수 ASCII 폰트만 후보로 둠 — 블록 문자(`█╗`)는 D2Coding에서의 폭·자체 호스팅 폰트의 글리프 포함 여부가 불확실해 정렬이 깨질 위험. 글자 크기는 배너 영역을 container로 두고 `min(1.5rem, calc(100cqw / 50 * 1.8))` — D2Coding 영문 폭 0.5em 기준으로 영역 폭에 맞추고(1.8은 넘침 방지 여유) 24px에서 멈춤 → 모바일 390px에서도 가로 스크롤 없음. 줄 간격 `leading-[1.15]`. 박스 `max-w-3xl`, 화면 가운데. 그림은 `aria-hidden`, 대신 `sr-only` `<h1>`. (30번 로그의 "루트 `/` = 글 목록"을 대체)
+39. (2026-10-04) **짧은 일기 `/diary`** ("한줄 일기"에서 이름 변경 — "한줄"은 원칙상 "한 줄"이라). 별도 테이블 `diary_entries`(0009, 본문 1000자, 공개 조회 · service role 쓰기). 목록은 최신순 5개씩, **페이지 번호 방식**(`?page=N`, offset + 개수 먼저 조회 — 범위 밖 `.range()`는 416이라, 넘는 번호는 마지막 페이지로 redirect). 페이지 이동 UI는 `← 이전  1 … 4 5 6 … 20  다음 →`(처음·끝 + 현재 앞뒤 2개). 사이드바 트리 **맨 아래**에 글과 같은 파일 항목으로 고정. 어드민이면 같은 페이지 하단에 작성 폼(RHF), 각 항목에 그 자리 수정(입력창 전환)·삭제(두 단계 확인) — `dal.ts`에 막지 않고 true/false만 돌려주는 `isAdmin()` 추가(판별 규칙은 `isAdminUser` 하나로 `verifyAdmin`과 공유), 세 액션은 각자 `verifyAdmin()`. 세션을 읽는 공개 페이지가 생겨 **`proxy.ts` matcher에 `/diary` 추가**(서버 컴포넌트는 갱신한 토큰을 쿠키에 못 써서 로그인이 풀릴 수 있음). `diary` slug 예약됨. [`diary-architecture.md`](./diary-architecture.md) 참고.
 
 ## 컬러
 
@@ -124,14 +125,12 @@
 > 2026-10-04 기준 계획 정리 (번호 순서대로 진행). 낙관적 댓글 반영(`useOptimistic`)은 검토 후 폐기 ([`architecture.md` §10](./architecture.md) 참고).
 > 배포 계획은 [`deploy-plan.md`](./deploy-plan.md)로 분리.
 
-4. [ ] **한줄 일기 (댓글 폼과 같은 형식)**
-   - 확정: **본인만 작성** (어드민 로그인 후), 타인은 **읽기만** 가능.
-   - 미확정 — 테이블: `comments` 재사용 vs 별도 테이블. 추천안은 **별도 테이블**(예: `diary_entries`) — 컬럼이 다르고(작성자 이름·`ip_hash`·글 slug 불필요) 쓰기 권한 규칙도 달라서, 한 테이블에 섞으면 RLS·Server Action에 분기가 생김. 권한은 댓글과 같은 패턴: RLS는 public select만, 쓰기는 Server Action에서 `ADMIN_USER_ID` 확인 후 service role로.
-   - 미확정 — 노출 위치: 홈 표제란 박스에 칸을 추가할지 별도 페이지로 둘지. 홈은 배너 + 연락처만 두는 형태로 정해졌다(38번 로그).
+(현재 남은 개발 항목 없음 — 배포는 [`deploy-plan.md`](./deploy-plan.md))
 
 완료된 항목 (참고):
+- [x] 짧은 일기 `/diary` ("한줄 일기"에서 이름 변경) — 별도 테이블, 5개씩 페이지 번호, 사이드바 맨 아래, 어드민 작성·수정·삭제. 39번 로그, [`diary-architecture.md`](./diary-architecture.md) 참고
 - [x] 홈 페이지 별도 추가 — 아스키 배너 + 표제란(연락처) 박스, 글 목록 페이지는 삭제. 38번 로그 참고
-- [x] `react-hook-form` 적용 — 댓글 폼 + 서버 검증 + 댓글 영역 디자인 토큰 정리. 4번 한줄 일기 작성 폼도 같은 방식(`register` + 공유 길이 상수 + 서버 검증)으로 만든다. 37번 로그 참고
+- [x] `react-hook-form` 적용 — 댓글 폼 + 서버 검증 + 댓글 영역 디자인 토큰 정리. 4번 짧은 일기 작성 폼도 같은 방식(`register` + 공유 길이 상수 + 서버 검증)으로 만든다. 37번 로그 참고
 - [x] 댓글 목록 페이지네이션 — 더보기 버튼 + 최신순 + 커서 방식, 한 묶음 20개. 36번 로그 참고
 - [x] `comment_rate_limits` 오래된 행 정리 — `pg_cron`으로 매일 1일 넘은 행 삭제. 35번 로그 참고
 - [x] 사이드바 트리의 카테고리 분류 체계 확정 — `post.tags[0]` 임시 방식을 DB 기반 중첩 카테고리(최대 3단계) + `/admin` 관리 페이지로 교체. 34번 로그, [`category-admin-plan.md`](./category-admin-plan.md), [`architecture.md` §11](./architecture.md) 참고

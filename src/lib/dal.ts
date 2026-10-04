@@ -15,16 +15,29 @@ export const getCurrentUser = cache(async () => {
   return data?.claims ?? null;
 });
 
+type CurrentUser = Awaited<ReturnType<typeof getCurrentUser>>;
+
+// 어드민 판별 규칙은 여기 한 곳에만 둔다. isAdmin()과 verifyAdmin()이 같이 쓴다.
+// env가 비어 있으면 아무도 통과시키지 않는다 (설정 실수로 열리지 않게)
+const isAdminUser = (user: CurrentUser): user is NonNullable<CurrentUser> => {
+  const adminUserId = process.env.ADMIN_USER_ID;
+  return !!user && !!adminUserId && user.sub === adminUserId;
+};
+
 // 어드민이 아니면(로그인 안 한 경우 포함) 403으로 중단한다.
 // 서버 액션은 페이지를 거치지 않고 직접 호출될 수 있으므로, 쓰기 액션마다 맨 앞에서 반드시 호출한다.
 export async function verifyAdmin() {
   const user = await getCurrentUser();
-  const adminUserId = process.env.ADMIN_USER_ID;
 
-  // env가 비어 있으면 아무도 통과시키지 않는다 (설정 실수로 열리지 않게)
-  if (!user || !adminUserId || user.sub !== adminUserId) {
+  if (!isAdminUser(user)) {
     forbidden();
   }
 
   return user;
+}
+
+// 공개 페이지에서 어드민 전용 UI(작성 폼, 수정/삭제 버튼)를 보여줄지 정할 때 쓴다. 막지 않고 true/false만 돌려준다.
+// 화면에서 숨기는 것일 뿐 방어선이 아니다 — 실제 쓰기 액션은 각자 verifyAdmin()을 다시 호출한다.
+export async function isAdmin() {
+  return isAdminUser(await getCurrentUser());
 }

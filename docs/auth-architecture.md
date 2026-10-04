@@ -124,10 +124,10 @@ Google 계정만 있으면 누구나 인증까지는 통과할 수 있다(동의
 | 파일 | 역할 |
 |---|---|
 | `src/lib/supabase/session-client.ts` | `createSessionClient()` — 로그인 세션 쿠키를 읽고 쓰는 클라이언트. 요청마다 쿠키가 다르므로 매번 새로 만든다. 서버 컴포넌트 렌더링 중엔 쿠키를 쓸 수 없어 `setAll`을 `try/catch`로 감쌈 |
-| `src/proxy.ts` | `/admin` 요청 직전 세션 토큰 갱신. 403 판단은 하지 않음 |
+| `src/proxy.ts` | `/admin` · `/diary` 요청 직전 세션 토큰 갱신. 403 판단은 하지 않음 |
 | `src/lib/actions/auth.ts` | `signInWithGoogle` / `signOut` 서버 액션 |
 | `src/app/auth/callback/route.ts` | 코드 S → 세션 교환, open redirect 방지 |
-| `src/lib/dal.ts` | `getCurrentUser()` / `verifyAdmin()` — 로그인·어드민 판단을 한 곳에 모은 Data Access Layer |
+| `src/lib/dal.ts` | `getCurrentUser()` / `verifyAdmin()` / `isAdmin()` — 로그인·어드민 판단을 한 곳에 모은 Data Access Layer. 판별 규칙은 `isAdminUser()` 하나 (`verifyAdmin`은 아니면 403, `isAdmin`은 true/false만 — 공개 페이지에서 어드민 전용 UI를 보여줄지 정할 때) |
 | `src/app/admin/page.tsx` | 로그인/403/관리 화면 분기 |
 | `src/app/forbidden.tsx` | 403 화면 |
 | `next.config.ts` | `experimental.authInterrupts: true` (`forbidden()` 사용에 필요) |
@@ -137,7 +137,7 @@ Google 계정만 있으면 누구나 인증까지는 통과할 수 있다(동의
 | 클라이언트 | 키 | 용도 |
 |---|---|---|
 | `client.ts` `supabase` | publishable(anon) | 공개 데이터 읽기 (댓글 목록 등) |
-| `server-client.ts` `supabaseAdmin` | service role (RLS 우회) | 신뢰된 서버 쓰기 (댓글 등록, 카테고리 CUD — `verifyAdmin()` 통과 후) |
+| `server-client.ts` `supabaseAdmin` | service role (RLS 우회) | 신뢰된 서버 쓰기 (댓글 등록, 카테고리 · 짧은 일기 CUD — `verifyAdmin()` 통과 후) |
 | `session-client.ts` `createSessionClient()` | publishable + 세션 쿠키 | 로그인/로그아웃, 현재 사용자 확인 |
 
 카테고리 쓰기를 `session-client`(authenticated 역할)가 아니라 service role로 하는 이유: `authenticated`에 쓰기 grant를 주면 Google 로그인만 하면 누구나 REST API로 직접 쓸 수 있게 되기 때문. 어드민 판별은 서버 코드(`verifyAdmin()`) 한 곳에서만 한다.
@@ -146,7 +146,8 @@ Google 계정만 있으면 누구나 인증까지는 통과할 수 있다(동의
 
 ## 5. 설계 결정
 
-- **proxy는 `/admin`에서만 실행**: Supabase 가이드는 모든 경로에서 실행하라고 하지만, 블로그 글 페이지는 로그인과 무관한 정적 페이지라 불필요한 인증 확인이 붙지 않도록 범위를 좁혔다. `/auth/callback`은 라우트 핸들러가 직접 쿠키를 쓸 수 있어 proxy가 필요 없다.
+- **proxy는 세션을 읽는 경로(`/admin`, `/diary`)에서만 실행**: Supabase 가이드는 모든 경로에서 실행하라고 하지만, 블로그 글 페이지는 로그인과 무관한 정적 페이지라 불필요한 인증 확인이 붙지 않도록 범위를 좁혔다. `/auth/callback`은 라우트 핸들러가 직접 쿠키를 쓸 수 있어 proxy가 필요 없다.
+  - **세션을 읽는 페이지를 새로 만들면 matcher에도 반드시 추가한다.** 서버 컴포넌트는 쿠키를 쓸 수 없어서, 만료된 access token을 `getClaims()`가 갱신만 하고 저장하지 못한다 → 이미 쓴 refresh token이 다음 요청에서 재사용되고, Supabase가 재사용으로 판단하면 세션이 끊겨 로그인이 풀린다. `/diary`는 공개 페이지지만 `isAdmin()`으로 세션을 읽어서 추가했다(2026-10-04).
 - **proxy는 보조 수단**: Next.js 문서 권장대로 proxy는 토큰 갱신만 하고, 실제 인가는 데이터에 가까운 `verifyAdmin()`에서 한다. 서버 액션은 페이지를 거치지 않고 직접 호출될 수 있으므로 **쓰기 액션마다 맨 앞에서 `verifyAdmin()`을 호출**한다.
 - **브라우저용 Supabase 클라이언트 없음**: 로그인 시작·로그아웃을 서버 액션으로 처리하므로 필요 없다.
 - **어드민 판별은 이메일이 아니라 uuid**: 이메일은 바뀔 수 있지만 Supabase uuid는 계정 생성 시 정해져 바뀌지 않고, 나중에 같은 이메일로 다른 로그인 방식을 추가해도 헷갈리지 않는다.

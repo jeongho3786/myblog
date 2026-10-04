@@ -40,7 +40,10 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-// 블로그 글 페이지는 로그인과 무관한 정적 페이지라 제외하고, 어드민 경로에서만 실행한다.
+// 블로그 글 페이지는 로그인과 무관한 정적 페이지라 제외하고, 세션을 읽는 경로에서만 실행한다.
+// - /admin: 관리 화면
+// - /diary: 공개 페이지지만 isAdmin()으로 세션을 읽어 작성 폼·수정/삭제 버튼을 보여주고, 그 서버 액션도 이 경로로 POST된다.
+//   여기서 갱신하지 않으면 만료된 토큰을 서버 컴포넌트가 갱신만 하고 쿠키에 못 써서 로그인이 풀릴 수 있다.
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/admin/:path*", "/diary"],
 };
