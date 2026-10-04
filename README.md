@@ -1,36 +1,17 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# jeong-ho blog
 
-## Getting Started
+개인 기술 블로그입니다. 글은 MDX 파일로 쓰고, 카테고리 · 댓글 · 짧은 일기 같은 데이터는 Supabase에 저장합니다.
+단색 배경 + 실선 테두리 디자인에, 한글 · 영문 · 코드를 고정폭 폰트(D2Coding) 하나로 통일했습니다.
 
-First, run the development server:
+## 기술 스택
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| 분류 | 사용 기술 |
+| --- | --- |
+| 프레임워크 | Next.js 16 (App Router, Server Actions), React 19 |
+| 언어 | TypeScript |
+| 스타일 | Tailwind CSS v4, class-variance-authority, tailwind-merge |
+| 콘텐츠 | MDX (`@next/mdx`), Shiki · rehype-pretty-code |
+| 폼 | react-hook-form |
+| 백엔드 · DB | Supabase (Postgres, RLS, Auth — Google OAuth, pg_cron) |
+| 배포 | Vercel |
+| 패키지 매니저 | pnpm |

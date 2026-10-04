@@ -57,9 +57,12 @@ flowchart TD
 ```mermaid
 flowchart LR
     P1["PostPage(slug=hello-world)"] --> R1["/hello-world HTML"]
-    P2["PostPage(slug=code-highlight-demo)"] --> R2["/code-highlight-demo HTML"]
-    P3["PostPage(slug=typography-demo)"] --> R3["/typography-demo HTML"]
+    P2["PostPage(slug=second-post)"] --> R2["/second-post HTML"]
+    P3["PostPage(slug=...)"] --> R3["... HTML"]
 ```
+
+- 슬러그는 `src/content/posts/*.mdx` 파일명이다 (예시의 `second-post`는 가상의 글).
+- ⚠️ **글이 0개면 빌드가 실패한다.** `import(\`@/content/posts/${slug}.mdx\`)`처럼 경로에 변수가 들어간 import는 빌드 때 맞는 파일을 미리 묶어 두는데, 맞는 파일이 하나도 없으면 `Module not found`가 난다. 마지막 글을 지우기 전에 새 글을 먼저 추가한다.
 
 ---
 
@@ -139,7 +142,9 @@ sequenceDiagram
     participant P as PostPage (서버)
 
     U->>F: 댓글 작성 후 제출
-    F->>A: createComment({postSlug, authorName, body})
+    F->>A: createComment({postSlug, authorName, body, honeypot})
+    A->>A: honeypot · 입력 검증
+    A->>DB: rate limit 조회
     A->>DB: insert comment
     DB-->>A: 성공/실패
     alt 실패
@@ -155,6 +160,8 @@ sequenceDiagram
         F-->>U: 화면 일부 patch (새 댓글 반영)
     end
 ```
+
+검증 · rate limit · honeypot의 세부 규칙은 [`comments-architecture.md` §5](./comments-architecture.md) 참고.
 
 ---
 

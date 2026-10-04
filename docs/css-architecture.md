@@ -10,7 +10,7 @@
 flowchart TD
     A["globals.css<br/>@theme 토큰 정의"] --> B["Tailwind v4 엔진<br/>(@tailwindcss/postcss)"]
     B --> C["유틸리티 클래스 자동 생성<br/>(bg-primary, text-lg, tracking-wide...)"]
-    C --> D["ui/*.tsx<br/>cva로 컴포넌트 variant 조립"]
+    C --> D["ui/*.tsx<br/>cva로 variant 조립 + cn()으로 className 병합"]
     C --> E["mdx-components.tsx<br/>마크다운 태그별 오버라이드"]
     D --> F["페이지/레이아웃 컴포넌트에서 조합"]
     E --> F

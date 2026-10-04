@@ -130,7 +130,7 @@ const PostList = ({
       >
         <FileIcon
           active={isActive}
-          className={`shrink-0 ${isActive ? "text-accent" : "text-subtle"}`}
+          className={`shrink-0 ${isActive ? "text-foreground" : "text-subtle"}`}
         />
 
         <span

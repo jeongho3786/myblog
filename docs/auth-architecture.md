@@ -195,7 +195,7 @@ Google 계정만 있으면 누구나 인증까지는 통과할 수 있다(동의
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 프로젝트 주소 (기존) |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `session-client`, `proxy`에서 사용 (기존) |
-| `SUPABASE_SERVICE_ROLE_KEY` | 카테고리 쓰기 (기존) |
+| `SUPABASE_SERVICE_ROLE_KEY` | 서버 전용 쓰기 — 댓글 등록, 카테고리 · 짧은 일기 CUD (기존) |
 | `ADMIN_USER_ID` | 어드민의 Supabase 사용자 uuid (Authentication → Users의 UID). 비어 있으면 아무도 어드민으로 통과하지 못함 |
 
 ---
@@ -203,5 +203,5 @@ Google 계정만 있으면 누구나 인증까지는 통과할 수 있다(동의
 ## 9. 알려진 한계 / 향후 고려사항
 
 - **`authInterrupts`는 experimental**: `forbidden()` / `forbidden.tsx`는 Next.js 실험 기능이라 이후 버전에서 API가 바뀔 수 있다. 업그레이드 시 확인 필요.
-- **배포 전 체크리스트**: 배포 환경에 `ADMIN_USER_ID` 등록, Supabase Redirect URLs에 배포 도메인 `/auth/callback` 추가, Site URL 변경.
+- **배포 체크리스트**: 배포 환경에 `ADMIN_USER_ID` 등록, Supabase Redirect URLs에 배포 도메인 `/auth/callback` 추가(로컬용 `localhost` 주소는 유지 — DB를 개발·운영이 같이 씀), Site URL 변경. 진행 상황은 [`deploy-plan.md`](./deploy-plan.md).
 - **어드민 페이지가 블로그 레이아웃 안에 있음**: 루트 레이아웃을 공유해서 사이드바가 함께 보인다. 카테고리 편집 결과를 바로 볼 수 있어 의도적으로 유지 중이며, 분리하려면 route group으로 레이아웃을 나눠야 한다.
